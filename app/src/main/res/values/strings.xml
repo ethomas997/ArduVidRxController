@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <string name="app_name">ArduVidRx Controller</string>
+    <string name="app_version">0.1</string>
+
+    <string name="terminal_name">ArduVidRx Terminal</string>
+    <string name="connect_button_name">Connect</string>
+    <string name="devices_button_name">Devices</string>
+    <string name="disconnect_button_name">Disconnect</string>
+    <string name="term_button_name">Terminal</string>
+    <string name="rssi_label_text">RSSI:</string>
+    <string name="rssitone_checkbox_name">RSSI audio tone</string>
+    <string name="channel_button_name">Channel</string>
+    <string name="freq_button_name">Frequency</string>
+    <string name="upone_button_name">+1 MHz</string>
+    <string name="downone_button_name">-1 MHz</string>
+    <string name="autotune_button_name">Auto Tune</string>
+    <string name="prevch_button_name">Prev Ch</string>
+    <string name="nextch_button_name">Next Ch</string>
+
+    <string name="chansel_dialog_title">Select Channel</string>
+    <string name="freqsel_dialog_title">Enter Frequency</string>
+    <string name="scanning_status_text">Scanning...</string>
+
+    <string name="blueterm_name">BlueTerm</string>
+    <string name="alert_dialog_no_bt">Cannot use this application without bluetooth.</string>
+	<string name="alert_dialog_yes">Yes</string>
+	<string name="alert_dialog_no">No</string>
+	<string name="alert_dialog_warning_title">Warning</string>
+	<string name="alert_dialog_ok">OK</string>
+	<string name="alert_dialog_close">Close</string>
+	<string name="alert_dialog_cancel">Cancel</string>
+	<string name="alert_dialog_turn_on_bt">This application needs Bluetooth. Do you want to turn it on?</string>
+
+	<string name="msg_connecting">Connecting to device</string>
+	<string name="msg_connected_to">Connected to</string>
+	<string name="nsg_unable_to_connect">Unable to connect device</string>
+	<string name="msg_connection_lost">Device connection was lost</string>
+			
+    <string name="not_connected">You are not connected to a device</string>
+    <string name="title_connecting">connecting...</string>
+    <string name="title_connected_to">connected: </string>
+    <string name="title_not_connected">not connected</string>
+
+    <string name="errfetch_version_info">Unable to fetch version info from receiver</string>
+    <string name="errfetch_chanrssi_vals">Unable to fetch chan/RSSI from receiver</string>
+    <string name="errfetch_response">No response from receiver</string>
+
+    <!--  DeviceListActivity -->
+    <string name="scanning">scanning for devices...</string>
+    <string name="select_device">select a device to connect</string>
+    <string name="none_paired">No devices have been paired</string>
+    <string name="none_found">No devices found</string>
+    <string name="title_paired_devices">Paired Devices</string>
+    <string name="title_other_devices">Other Available Devices</string>
+    <string name="button_scan">Scan for devices</string>
+
+    <!-- Options Menu -->
+    <string name="connect">Connect device</string>
+    <string name="disconnect">Disconnect device</string>
+    <string name="preferences">Preferences</string>    
+    <string name="special_keys">Special keys</string>
+    
+    <!-- Preference dialog -->
+    <string name="general_preferences">General</string>
+
+    <string name="title_localhecho_preference">Local echo</string>
+    <string name="summary_localecho_preference">Display the key strokes</string>
+
+    <string name="title_allowinsecureconnections_preference">Allow insecure connections</string>
+    <string name="summary_allowinsecureconnections_preference">Allow bluetooth insecure connections</string>
+    
+	<string name="incoming_end_of_line">Incoming End of Line</string>
+	<string name="outgoing_end_of_line">Outgoing End of Line</string>
+
+    <string name="title_end_of_line_0D_preference">CR (0x0D) character</string>
+    <string name="summary_end_of_line_0D_preference"></string>
+    <string name="dialog_title_incoming_end_of_line_0D_preference">Incoming CR (0x0D) character</string>
+    <string name="dialog_title_outgoing_end_of_line_0D_preference">Outgoing CR (0x0D) character</string>
+    
+    <string name="title_end_of_line_0A_preference">LF (0x0A) character</string>
+    <string name="summary_end_of_line_0A_preference"></string>
+    <string name="dialog_title_incoming_end_of_line_0A_preference">Incoming LF (0x0A) character</string>
+    <string name="dialog_title_outgoing_end_of_line_0A_preference">Outgoing LF (0x0A) character</string>    
+
+    <string name="text_preferences">Text</string>
+
+    <string name="title_fontsize_preference">Font size</string>
+    <string name="summary_fontsize_preference">Choose character height in points.</string>
+    <string name="dialog_title_fontsize_preference">Font size</string>
+
+    <string name="title_color_preference">Colors</string>
+    <string name="summary_color_preference">Choose text color.</string>
+    <string name="dialog_title_color_preference">Text color</string>
+
+    <string name="keyboard_preferences">Keyboard</string>
+    <string name="title_controlkey_preference">Control key</string>
+    <string name="summary_controlkey_preference">Choose control key.</string>
+    <string name="dialog_title_controlkey_preference">Control key</string>
+
+    <string name="title_document_key_press">Press</string>
+    <string name="title_document_key_rest">and Key</string>
+    
+    <string name="menu_start_logging">Start logging</string>
+    <string name="menu_stop_logging">Stop logging</string>
+    <string name="menu_logging_started">Logging started</string>
+    <string name="menu_logging_stopped">Logging stopped</string>
+    <string name="menu_about">About</string>
+    
+    <string name="title_screenorientation_preference">Screen orientation</string>
+    <string name="summary_screenorientation_preference">Choose the screen orientation</string>
+    <string name="dialog_title_screenorientation_preference">Screen orientation</string>
+    
+    <string name="pymasde_es">http://pymasde.es/</string>
+
+   <!-- Don't localize these default values -->
+   <string name="default_value_localecho_preference">false</string>
+   <string name="default_value_allowinsecureconnections_preference">true</string>
+   <string name="default_value_fontsize_preference">10</string>
+   <string name="default_value_color_preference">2</string>
+   <string name="default_value_controlkey_preference">0</string>
+   <string name="default_value_end_of_line_0D_preference">13</string>
+   <string name="default_value_end_of_line_0A_preference">10</string>
+   <string name="default_screenorientation_preference">0</string>
+</resources>
