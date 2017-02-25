@@ -24,7 +24,9 @@ public class VidReceiverManager
   public static final int BUFF_MAX_LINES = 100;
     /** Length of time to wait for expected responses from receiver. */
   public static final int RESP_WAIT_TIMEMS = 250;
-    /** Tag string for debug logging. */
+    /** String to be displayed when receiver is in 'monitor' mode. */
+  public static final String MONITOR_STRING = "Monitor";
+    /** Tag string for logging. */
   public static final String LOG_TAG = "VidRecMgr";
 
   public static final String VIDRX_CR_STR = "\r";
@@ -35,23 +37,41 @@ public class VidReceiverManager
   public static final byte [] VIDRX_VERSION_CMD = ("V"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_ECHOOFF_CMD = ("E0"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_ECHOON_CMD = ("E1"+VIDRX_CR_STR).getBytes();
-  public static final byte [] VIDRX_READRSSI_CMD = ("XR"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_REPCHRSSI_CMD = "~".getBytes();
+  public static final byte [] VIDRX_AUTOTUNE_CMD = ("A"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_NEXTBAND_CMD = ("B"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_NEXTCHAN_CMD = ("C"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_PREVBAND_CMD = ("XB"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_PREVCHAN_CMD = ("XC"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_UPONEMHZ_CMD = ("U"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_DOWNONEMHZ_CMD = ("D"+VIDRX_CR_STR).getBytes();
-  public static final byte [] VIDRX_AUTOTUNE_CMD = ("A"+VIDRX_CR_STR).getBytes();
-  public static final byte [] VIDRX_NEXTFREQ_CMD = ("N"+VIDRX_CR_STR).getBytes();
-  public static final byte [] VIDRX_PREVFREQ_CMD = ("P"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_MNEXTCH_CMD = ("N"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_MPREVCH_CMD = ("P"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_MONITOR_CMD = ("M"+VIDRX_CR_STR).getBytes();
   public static final String VIDRX_TUNE_PRESTR = "T";
   public static final String VIDRX_MINRSSI_PRESTR = "XM";
+  public static final String VIDRX_MONINTVL_PRESTR = "XI";
 
   private static final int VIDCMD_TERMINATE_MSGC = 0;      //codes for command messages
   private static final int VIDCMD_TUNECODE_MSGC = 1;       // via CommandHandlerThread
   private static final int VIDCMD_TUNEFREQ_MSGC = 2;
-  private static final int VIDCMD_UPONEMHZ_MSGC = 3;
-  private static final int VIDCMD_DOWNONEMHZ_MSGC = 4;
-  private static final int VIDCMD_AUTOTUNE_MSGC = 5;
-  private static final int VIDCMD_NEXTCHAN_MSGC = 6;
+  private static final int VIDCMD_AUTOTUNE_MSGC = 3;
+  private static final int VIDCMD_NEXTBAND_MSGC = 4;
+  private static final int VIDCMD_NEXTCHAN_MSGC = 5;
+  private static final int VIDCMD_PREVBAND_MSGC = 6;
   private static final int VIDCMD_PREVCHAN_MSGC = 7;
+  private static final int VIDCMD_UPONEMHZ_MSGC = 8;
+  private static final int VIDCMD_DOWNONEMHZ_MSGC = 9;
+  private static final int VIDCMD_MNEXTCH_MSGC = 10;
+  private static final int VIDCMD_MPREVCH_MSGC = 11;
+  private static final int VIDCMD_SETMINRSSI_MSGC = 12;
+  private static final int VIDCMD_MONITOR_MSGC = 13;
+  private static final int VIDCMD_SETMONINTVL_MSGC = 14;
+
+  private static final String SCANNING_CHECK_STR = " Scanning";
+  private static final int SCANNING_CHKSTR_LEN = SCANNING_CHECK_STR.length();
+  private int vidrxScanInProgStrMatchPos = 0;              //position for string matching
+  private boolean vidrxScanningInProgressFlag = false;     //true while receiver scanning
 
   private final Activity parentActivityObj;
   private final BluetoothSerialService bluetoothSerialServiceObj;
@@ -63,7 +83,9 @@ public class VidReceiverManager
   private char receivedLinesLastEndChar = '\0';
   private ReceiverUpdateWorker receiverUpdateWorkerObj = null;
   private CommandHandlerThread commandHandlerThreadObj = new CommandHandlerThread();
+  private boolean monitorModeActiveFlag = false;
   private int minRssiForScansValue = 30;
+  private int monitorIntervalValue = 5;
 
 
   /**
@@ -148,7 +170,7 @@ public class VidReceiverManager
                                     ProgramResources.MAINGUI_UPD_POPUPMSG,popStr).sendToTarget();
         }
       }
-      outputReceiverEchoOffCommand();       //send echo-off command
+      outputReceiverEchoCommand(false);     //send echo-off command
 
       if(!queryReportChanRssiVals())   //do initial query/report of channel/RSSI values
       {  //query failed
@@ -225,6 +247,28 @@ public class VidReceiverManager
   }
 
   /**
+   * Sends command to auto-tune receiver to strongest channel.
+   */
+  public void autoTuneReceiver()
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_AUTOTUNE_MSGC);
+  }
+
+  /**
+   * Sends command to tune receiver to next (or previous) frequency-code
+   * band or channel.
+   * @param bandFlag true for band; false for channel.
+   * @param nextFlag true for next; false for previous.
+   */
+  public void tuneNextPrevBandChannel(boolean bandFlag, boolean nextFlag)
+  {
+    if(bandFlag)
+      commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_NEXTBAND_MSGC : VIDCMD_PREVBAND_MSGC);
+    else
+      commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_NEXTCHAN_MSGC : VIDCMD_PREVCHAN_MSGC);
+  }
+
+  /**
    * Sends command to tune receiver frequency up or down by one MHz.
    * @param upFlag true for +1 MHz; false for -1 MHz.
    */
@@ -234,21 +278,39 @@ public class VidReceiverManager
   }
 
   /**
-   * Sends command to auto-tune receiver to strongest channel.
-   */
-  public void autoTuneReceiver()
-  {
-    commandHandlerThreadObj.sendMessage(VIDCMD_AUTOTUNE_MSGC);
-  }
-
-  /**
-   * Selects the next (or previous) tuner channel from amongst those that
+   * Selects the next (or previous) monitored channel from amongst those that
    * have a signal on them.
    * @param nextFlag true for next; false for previous.
    */
-  public void selectPrevNextReceiverChannel(boolean nextFlag)
+  public void selectPrevNextMonitorChannel(boolean nextFlag)
   {
-    commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_NEXTCHAN_MSGC : VIDCMD_PREVCHAN_MSGC);
+    commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_MNEXTCH_MSGC : VIDCMD_MPREVCH_MSGC);
+  }
+
+  /**
+   * Sends a new minimum-RSSI-for-scans value to the receiver.
+   * @param minRssiVal new minimum-RSSI-for-scans value.
+   */
+  public void sendMinRssiValToReceiver(int minRssiVal)
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_SETMINRSSI_MSGC,minRssiVal);
+  }
+
+  /**
+   * Sends command to enter monitor-mode to receiver.
+   */
+  public void sendMonitorCmdToReceiver()
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_MONITOR_MSGC);
+  }
+
+  /**
+   * Sends a new monitor-interval value to the receiver.
+   * @param intervalVal new monitor-interval value (in seconds).
+   */
+  public void sendMonIntvlValToReceiver(int intervalVal)
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_SETMONINTVL_MSGC,intervalVal);
   }
 
   /**
@@ -281,20 +343,50 @@ public class VidReceiverManager
       case VIDCMD_TUNEFREQ_MSGC:       //tune receiver to frequency in MHz
         sendCommandNoResponse(VIDRX_TUNE_PRESTR + msgObj.obj + VIDRX_CR_STR);
         break;
+      case VIDCMD_AUTOTUNE_MSGC:       //auto-tune receiver to strongest channel
+        doAutoTuneReceiver();
+        break;
+      case VIDCMD_NEXTBAND_MSGC:       //tune receiver to next freq-code band
+        sendCommandNoResponse(VIDRX_NEXTBAND_CMD);
+        break;
+      case VIDCMD_NEXTCHAN_MSGC:       //tune receiver to next freq-code channel
+        sendCommandNoResponse(VIDRX_NEXTCHAN_CMD);
+        break;
+      case VIDCMD_PREVBAND_MSGC:       //tune receiver to previous freq-code band
+        sendCommandNoResponse(VIDRX_PREVBAND_CMD);
+        break;
+      case VIDCMD_PREVCHAN_MSGC:       //tune receiver to previous freq-code channel
+        sendCommandNoResponse(VIDRX_PREVCHAN_CMD);
+        break;
       case VIDCMD_UPONEMHZ_MSGC:       //tune receiver frequency up by one MHz
         sendCommandNoResponse(VIDRX_UPONEMHZ_CMD);
         break;
       case VIDCMD_DOWNONEMHZ_MSGC:     //tune receiver frequency down by one MHz
         sendCommandNoResponse(VIDRX_DOWNONEMHZ_CMD);
         break;
-      case VIDCMD_AUTOTUNE_MSGC:       //auto-tune receiver to strongest channel
-        doAutoTuneReceiver();
+      case VIDCMD_MNEXTCH_MSGC:        //select next (monitor) channel
+        doSendNextPrevMonToReceiver(VIDRX_MNEXTCH_CMD);
         break;
-      case VIDCMD_NEXTCHAN_MSGC:       //select next channel
-        doSelectNextPrevReceiverChannel(VIDRX_NEXTFREQ_CMD);
+      case VIDCMD_MPREVCH_MSGC:        //select previous (monitor) channel
+        doSendNextPrevMonToReceiver(VIDRX_MPREVCH_CMD);
         break;
-      case VIDCMD_PREVCHAN_MSGC:       //select previous channel
-        doSelectNextPrevReceiverChannel(VIDRX_PREVFREQ_CMD);
+      case VIDCMD_SETMINRSSI_MSGC:     //send new min-RSSI-for-scans value to receiver
+        doSendMinRssiValToReceiver(msgObj.arg1);
+        break;
+      case VIDCMD_MONITOR_MSGC:        //enter (or exit) monitor mode
+        if(!monitorModeActiveFlag)
+        {  //monitor mode not active; start it now
+          doSendNextPrevMonToReceiver(VIDRX_MONITOR_CMD);
+          monitorModeActiveFlag = true;
+        }
+        else
+        {  //monitor mode is active; send CR to deactivate it
+          outputCmdNoResponse(VIDRX_CR_ARR);
+          monitorModeActiveFlag = false;
+        }
+        break;
+      case VIDCMD_SETMONINTVL_MSGC:    //send new monitor-interval value to receiver
+        doSendMonIntvlValToReceiver(msgObj.arg1);
         break;
       case VIDCMD_TERMINATE_MSGC:      //terminate thread/looper for command handler
         commandHandlerThreadObj.quitThreadLooper();
@@ -372,14 +464,14 @@ public class VidReceiverManager
   }
 
   /**
-   * Performs the work of selecting the next (or previous) tuner channel
-   * from amongst those that have a signal on them.
+   * Performs the work of sending a 'monitor' command (N/P/M) to the
+   * receiver and checking if the receiver has started scanning.
    * @param cmdBuff command to be sent.
    */
-  public void doSelectNextPrevReceiverChannel(byte [] cmdBuff)
+  public void doSendNextPrevMonToReceiver(byte [] cmdBuff)
   {
     pauseReceiverUpdateWorker();
-    if(outputCmdNoResponse(cmdBuff) != null)     //send 'N' or 'P' command
+    if(outputCmdNoResponse(cmdBuff) != null)     //send 'N', 'P' or 'M' command
     {  //initial newline response received OK
       if(peekFirstReceivedChar() == ' ')         //if receiver is scanning then
         processReceiverScanning();               //wait for scanning to finish
@@ -406,16 +498,30 @@ public class VidReceiverManager
   }
 
   /**
-   * Outputs a new min-RSSI-for-scans value to the receiver.
-   * This method should only be used while the receiver worker
-   * is stopped or paused.
+   * Performs the work of sending a new minimum-RSSI-for-scans value to the receiver.
+   * @param minRssiVal new minimum-RSSI-for-scans value.
    */
-  private void outputMinRssiValToReceiver(int minRssiVal)
+  private void doSendMinRssiValToReceiver(int minRssiVal)
   {
     pauseReceiverUpdateWorker();
     outputCmdNoResponse((VIDRX_MINRSSI_PRESTR + minRssiVal + VIDRX_CR_STR).getBytes());
-    if(fetchMinRssiValFromReceiver() != minRssiVal)   //read back and check value
+    fetchMinRssiValFromReceiver();                    //fetch value from receiver
+    if(getMinRssiForScansValue() != minRssiVal)       //check value
       Log.e(LOG_TAG, "Mismatch confirming min-RSSI value sent to receiver");
+    resumeReceiverUpdateWorker();
+  }
+
+  /**
+   * Performs the work of sending a new monitor-interval value to the receiver.
+   * @param intervalVal new monitor-interval value (in seconds).
+   */
+  private void doSendMonIntvlValToReceiver(int intervalVal)
+  {
+    pauseReceiverUpdateWorker();
+    outputCmdNoResponse((VIDRX_MONINTVL_PRESTR + intervalVal + VIDRX_CR_STR).getBytes());
+    fetchMonIntvlValFromReceiver();                   //fetch value from receiver
+    if(getMonitorIntervalValue() != intervalVal)      //check value
+      Log.e(LOG_TAG, "Mismatch confirming monitor-interval value sent to receiver");
     resumeReceiverUpdateWorker();
   }
 
@@ -430,23 +536,36 @@ public class VidReceiverManager
   }
 
   /**
-   * Sends the echo-off command to the receiver.  This method should only be
-   * used while the receiver worker is stopped or paused.
+   * Sends the echo-on or echo-off command to the receiver.  This method
+   * should only be used while the receiver worker is stopped or paused.
+   * @param onFlag true for echo on; false for echo off.
    * @return Received "echo" characters (if any), or null if timeout reached
    * before receiving an end-of-line character.
    */
-  public String outputReceiverEchoOffCommand()
+  public String outputReceiverEchoCommand(boolean onFlag)
   {
-    return outputCmdNoResponse(VIDRX_ECHOOFF_CMD);
+    return outputCmdNoResponse(onFlag ? VIDRX_ECHOON_CMD :VIDRX_ECHOOFF_CMD);
   }
 
   /**
-   * Fetches and saves the min-RSSI-for-scans value from the receiver.
+   * Sends the command to query the program-version information from receiver
+   * (but does not receive the response.
+   * This method should only be used while the receiver worker is stopped
+   * or paused.
+   * @return Received "echo" characters (if any), or null if timeout reached
+   * before receiving an end-of-line character.
+   */
+  public String outputQueryVersionCmd()
+  {
+    return outputCmdNoResponse(VIDRX_VERSION_CMD);
+  }
+
+  /**
+   * Fetches and saves the minimum-RSSI-for-scans value from the receiver.
    * This method should only be used while the receiver worker is
    * stopped or paused.
-   * @return The fetched value.
    */
-  public int fetchMinRssiValFromReceiver()
+  public void fetchMinRssiValFromReceiver()
   {
     try
     {         //send command, receive and save numeric response
@@ -457,11 +576,46 @@ public class VidReceiverManager
     {
       Log.e(LOG_TAG, "Error fetching min-RSSI value from receiver", ex);
     }
+  }
+
+  /**
+   * Returns the current minimum-RSSI-for-scans value.
+   * @return The current minimum-RSSI-for-scans value.
+   */
+  public int getMinRssiForScansValue()
+  {
     return minRssiForScansValue;
   }
 
   /**
-   * Queries, receives and returns program-version information for receiver.
+   * Fetches and saves the monitor-interval value from the receiver.
+   * This method should only be used while the receiver worker is
+   * stopped or paused.
+   */
+  public void fetchMonIntvlValFromReceiver()
+  {
+    try
+    {         //send command, receive and save numeric response
+      monitorIntervalValue = outputCmdRecvIntResp(
+                                                (VIDRX_MONINTVL_PRESTR+VIDRX_CR_STR).getBytes());
+    }
+    catch(Exception ex)
+    {
+      Log.e(LOG_TAG, "Error monitor-interval value from receiver", ex);
+    }
+  }
+
+  /**
+   * Returns the current monitor-interval value (in seconds).
+   * @return The current monitor-interval value (in seconds).
+   */
+  public int getMonitorIntervalValue()
+  {
+    return monitorIntervalValue;
+  }
+
+  /**
+   * Queries, receives and returns program-version information from receiver.
    * This method should only be used while the receiver worker is stopped
    * or paused.
    * @return Program-version-information string, or null if unable to receive.
@@ -575,6 +729,8 @@ public class VidReceiverManager
             firstReceivedCharacter = '\0';       //clear first-received character
           }
           receivedLinesLastEndChar = ch;         //track last CR/LF character
+          vidrxScanInProgStrMatchPos = 0;        //reset matcher pos for receiver scanning
+          vidrxScanningInProgressFlag = false;   //reset flag for receiver scanning
         }
       }
       else
@@ -582,6 +738,17 @@ public class VidReceiverManager
         receivedCharsBuffer.append(ch);          //add to character buffer
         if(firstReceivedCharacter == '\0')       //if no previous for line then
           firstReceivedCharacter = ch;           //save first-received character
+              //track received chars to see if buffer matches SCANNING_CHECK_STR:
+        if(vidrxScanInProgStrMatchPos >= 0 && vidrxScanInProgStrMatchPos < SCANNING_CHKSTR_LEN)
+        {  //matcher position is not -1 (for mismatch) or > length (for match complete)
+          if(ch == SCANNING_CHECK_STR.charAt(vidrxScanInProgStrMatchPos))
+          {  //character matches at position; check if all have been matched
+            if(++vidrxScanInProgStrMatchPos >= SCANNING_CHKSTR_LEN)
+              vidrxScanningInProgressFlag = true;     //indicate 'scanning' string received
+          }
+          else  ////character does not match at position
+            vidrxScanInProgStrMatchPos = -1;     //set value to stop checking
+        }
       }
     }
   }
@@ -657,18 +824,42 @@ public class VidReceiverManager
    */
   private boolean queryReportChanRssiVals()
   {
+    if(vidrxScanningInProgressFlag)
+    {  //receiver returned 'scanning' indicator string
+      processReceiverScanning();       //notify and wait for scanning to finish
+      return true;
+    }
+    clearBuffer();                //clear anything already received
     String respStr;
-    if((respStr=outputCmdRecvResponse(VIDRX_READRSSI_CMD)) != null)
+                        //send "~" and get response (no LF in between):
+    if((respStr=outputCmdNoResponse(VIDRX_REPCHRSSI_CMD)) != null)
     {  //command sent and response received OK
       try
-      {       //parse "freqCC=rssi" response into two integers:
+      {       //parse "freqCC=rssi" response
+        if(respStr.startsWith(">"))         //ignore any leading '>' prompt
+          respStr = respStr.substring(1);
         respStr = respStr.trim();           //remove leading space
         final int p;
         if((p=respStr.indexOf('=')) > 3)
         {  //length of response OK
           final int freqVal = Integer.parseInt(respStr.substring(0,4));
           final String chCodeStr = (p >= 6) ? respStr.substring(4,6) : null;
-          final int rssiVal = Integer.parseInt(respStr.substring(p+1));
+          String dispStr = null;
+          int q;             //check for trailing "M" (for 'monitor' mode)
+          if((q=respStr.indexOf(' ',p+1)) > 0)
+          {  //trailing space found
+            if(respStr.indexOf('M',q) == q+1)
+            {  //'M' found after space then
+              dispStr = MONITOR_STRING;          //setup to display 'monitor' indicator
+              monitorModeActiveFlag = true;      //indicate 'monitor' mode active
+            }
+          }
+          else
+          {  //no trailing space found
+            q = respStr.length();
+            monitorModeActiveFlag = false;       //indicate 'monitor' mode not active
+          }
+          final int rssiVal = Integer.parseInt(respStr.substring(p+1,q));
               //send update to channel tracker:
           if(vidChannelTrackerObj != null)
             vidChannelTrackerObj.setFreqChannel(chCodeStr,(short)freqVal);
@@ -676,7 +867,7 @@ public class VidReceiverManager
           if(mainGuiUpdateHandlerObj != null)
           {
             mainGuiUpdateHandlerObj.obtainMessage(
-                           ProgramResources.MAINGUI_UPD_CHANRSSI,freqVal,rssiVal).sendToTarget();
+                   ProgramResources.MAINGUI_UPD_CHANRSSI,freqVal,rssiVal,dispStr).sendToTarget();
           }
           return true;       //indicate success
         }
@@ -798,6 +989,17 @@ public class VidReceiverManager
     {
       if(looperHandlerObj != null)
         looperHandlerObj.obtainMessage(msgCode,paramStr).sendToTarget();
+    }
+
+    /**
+     * Sends command message to the handler.
+     * @param msgCode message code (one of the "VIDCMD_..." values).
+     * @param val integer value for command.
+     */
+    public void sendMessage(int msgCode, int val)
+    {
+      if(looperHandlerObj != null)
+        looperHandlerObj.obtainMessage(msgCode,val,0).sendToTarget();
     }
   }
 }

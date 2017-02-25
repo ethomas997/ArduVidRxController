@@ -15,15 +15,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.Toast;
+import com.etheli.util.GuiUtils;
+import com.etheli.util.SwipeGestureDispatcher;
 
 /**
  * Class MainActivity defines the main activity for the ArduVidRx Controller.
  */
 public class MainActivity extends Activity
 {
-    /** Tag string for debug logging. */
-  public static final String LOG_TAG = "Main";
+    /** Tag string for logging. */
+  public static final String LOG_TAG = "MainActivity";
     /** Name for SharedPreferences access. */
   public static final String SHARED_PREFS_NAME = "ArduVidRxPrefs";
     /** SharedPreferences key for last-connected bluetooth device name. */
@@ -33,6 +38,8 @@ public class MainActivity extends Activity
 
   private final ProgramResources programResourcesObj = ProgramResources.getProgramResourcesObj();
   private final FrequencyTable videoFrequencyTableObj = new FrequencyTable();
+  private final SwipeGestureDispatcher swipeGestureDispatcherObj =  new SwipeGestureDispatcher();
+  private View fragementContainerViewObj = null;
   private BluetoothSerialService bluetoothSerialServiceObj = null;
   private VidReceiverManager vidReceiverManagerObj = null;
   private ConnectFragment connectFragmentObj = null;
@@ -66,8 +73,8 @@ public class MainActivity extends Activity
     programResourcesObj.setTerminalStateHandlerObj(terminalStateHandlerObj);
 
          //show ConnectFragement:
-    if(findViewById(R.id.fragment_container) != null)
-    {
+    if((fragementContainerViewObj=findViewById(R.id.fragment_container)) != null)
+    {  //able to locate 'fragment_container' OK
       // if we're being restored from a previous state,
       // then we don't need to do anything and should return or else
       // we could end up with overlapping fragments
@@ -152,6 +159,8 @@ public class MainActivity extends Activity
     fragTransObj.replace(R.id.fragment_container,opFragObj);    //swap in new fragment
 //    transaction.addToBackStack(null);
     fragTransObj.commit();
+         //setup so operation-fragment TabHost responds to swipe gestures:
+    swipeGestureDispatcherObj.setSwipeGestureEventIntfObj(opFragObj);
     if(vidReceiverManagerObj != null)
       vidReceiverManagerObj.startManager();      //start receiver-manager threads
   }
@@ -161,6 +170,8 @@ public class MainActivity extends Activity
   {
     if(vidReceiverManagerObj != null)
       vidReceiverManagerObj.stopManager();       //stop receiver-manager threads
+         //clear swipe-gesture dispatches to operation-fragment TabHost:
+    swipeGestureDispatcherObj.setSwipeGestureEventIntfObj(null);
 
     if(activityIsRunningFlag)
     {  //activity not exiting ('onDestroy()' not called)
@@ -197,6 +208,28 @@ public class MainActivity extends Activity
           bluetoothSerialServiceObj.processReqEnableBtResult(resultCode,data);
         break;
     }
+  }
+
+  /**
+   * Called when touch-screen events are processed.  Overridden to intercept
+   * all touch-screen events before they are dispatched to the activity.
+   * The SwipeGestureDispatcher will detected 'swipe' events and pass them
+   * on to the listener.
+   * @param event MotionEvent: The touch screen event.
+   * @return Return true if the event was consumed.
+   */
+  @Override
+  public boolean dispatchTouchEvent(MotionEvent event)
+  {
+    try
+    {              //process touch event (will be dispatched if 'swipe' event):
+      swipeGestureDispatcherObj.onTouch(fragementContainerViewObj,event);
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; log it and move on
+      Log.e(LOG_TAG, "Exception in swipeGestureDispatcherObj.onTouch()", ex);
+    }
+    return super.dispatchTouchEvent(event);      //pass event to activity
   }
 
   //Handler that gets information back from the BluetoothSerialService
@@ -299,9 +332,12 @@ public class MainActivity extends Activity
                   if(vidReceiverManagerObj != null)
                   {
                     vidReceiverManagerObj.pauseReceiverUpdateWorker();    //pause update worker
-                    vidReceiverManagerObj.outputReceiverResetCommand();   //reset receiver
+                    vidReceiverManagerObj.outputReceiverEchoCommand(true);     //send echo-on
+                    terminalIsActiveFlag = true;                     //set indicator flag
+                    vidReceiverManagerObj.outputQueryVersionCmd();   //show version info in terminal
                   }
-                  terminalIsActiveFlag = true;             //set indicator flag
+                  else
+                    terminalIsActiveFlag = true;                     //set indicator flag
                   break;
                 case ProgramResources.TERMINAL_STATE_STOPPED:   //terminal stopped
                   terminalIsActiveFlag = false;            //clear indicator flag
@@ -309,7 +345,7 @@ public class MainActivity extends Activity
                   {  //connection is active
                     if(vidReceiverManagerObj != null)
                     {
-                      vidReceiverManagerObj.outputReceiverEchoOffCommand(); //send echo-off command
+                      vidReceiverManagerObj.outputReceiverEchoCommand(false);  //send echo-off
                                   //get/save min-RSSI-for-scans value from receiver
                                   // (in case it was altered via command in terminal mode):
                       vidReceiverManagerObj.fetchMinRssiValFromReceiver();

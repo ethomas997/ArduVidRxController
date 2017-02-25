@@ -92,48 +92,55 @@ public class DialogUtils
   }
 
   /**
-   * Displays a dialog to edit or select a numeric value.
+   * Displays a dialog to edit a numeric value.
    * @param activityObj parent activity for dialog.
    * @param titleId resource ID of title for dialog.
-   * @param initVal value of initial item to be selected.
-   * @param listenerObj listener to be invoked when an item is selected.
+   * @param initVal initial value for editor in dialog.
+   * @param maxLen maximum length (number of digits) for editor in dialog,
+   * or 0 for no limit.
+   * @param listenerObj listener to be invoked after a value is entered.
    * @return A new DialogFragment object.
    */
   public static DialogFragment showEditNumberDialogFragment(Activity activityObj, int titleId,
-                                             int initVal, DialogItemSelectedListener listenerObj)
+                                 int initVal, int maxLen, DialogItemSelectedListener listenerObj)
   {
     return showEditNumberDialogFragment(activityObj,activityObj.getString(titleId),
-                                                                            initVal,listenerObj);
+                                                                     initVal,maxLen,listenerObj);
   }
 
   /**
-   * Displays a dialog to edit or select a numeric value.
+   * Displays a dialog to edit a numeric value.
    * @param activityObj parent activity for dialog.
    * @param titleStr title string for dialog, or null for none.
-   * @param initVal value of initial item to be selected.
-   * @param listenerObj listener to be invoked when an item is selected.
+   * @param initVal initial value for editor in dialog.
+   * @param maxLen maximum length (number of digits) for editor in dialog,
+   * or 0 for no limit.
+   * @param listenerObj listener to be invoked after a value is entered.
    * @return A new DialogFragment object.
    */
   public static DialogFragment showEditNumberDialogFragment(Activity activityObj, String titleStr,
-                                             int initVal, DialogItemSelectedListener listenerObj)
+                                 int initVal, int maxLen, DialogItemSelectedListener listenerObj)
   {
-    final DialogFragment fragObj = createEditNumberDialogFragment(titleStr,initVal,listenerObj);
+    final DialogFragment fragObj =
+                             createEditNumberDialogFragment(titleStr,initVal,maxLen,listenerObj);
     fragObj.show(activityObj.getFragmentManager(),"EditNumberDialogFragment");
     return fragObj;
   }
 
   /**
-   * Creates a dialog to edit or select a numeric value.
+   * Creates a dialog to edit a numeric value.
    * @param titleStr title string for dialog, or null for none.
-   * @param initVal value of initial item to be selected.
-   * @param listenerObj listener to be invoked when an item is selected.
+   * @param initVal initial value for editor in dialog.
+   * @param maxLen maximum length (number of digits) for editor in dialog,
+   * or 0 for no limit.
+   * @param listenerObj listener to be invoked after a value is entered.
    * @return A new DialogFragment object.
    */
   public static DialogFragment createEditNumberDialogFragment(String titleStr,
-                                             int initVal, DialogItemSelectedListener listenerObj)
+                                int initVal, int maxLen, DialogItemSelectedListener listenerObj)
   {
     final EditNumberDialogFragment fragObj = new EditNumberDialogFragment();
-    fragObj.setInitialData(titleStr,initVal,listenerObj);
+    fragObj.setInitialData(titleStr,initVal,maxLen,listenerObj);
     return fragObj;
   }
 
@@ -213,26 +220,30 @@ public class DialogUtils
 
 
   /**
-   * Class NumberPickerDialogFragment defines a dialog to edit a numeric value.
+   * Class EditNumberDialogFragment defines a dialog to edit a numeric value.
    */
   public static class EditNumberDialogFragment extends DialogFragment
   {
     private String dialogTitleString = null;
     private int initialNumberValue = 0;
+    private int maximumLengthValue = 0;
     private DialogItemSelectedListener dialogItemSelectedListenerObj = null;
 
     /**
      * Sets initial data values for dialog.  This method should be invoked
      * before the dialog is displayed.
      * @param titleStr title string for dialog, or null for none.
-     * @param initVal value of initial item to be selected.
+     * @param initVal initial value for editor in dialog.
+     * @param maxLen maximum length (number of digits) for editor in dialog,
+     * or 0 for no limit.
      * @param listenerObj listener to be invoked after.
      */
-    public void setInitialData(String titleStr, int initVal,
+    public void setInitialData(String titleStr, int initVal, int maxLen,
                                      DialogItemSelectedListener listenerObj)
     {
       dialogTitleString = titleStr;
       initialNumberValue = initVal;
+      maximumLengthValue = maxLen;
       dialogItemSelectedListenerObj = listenerObj;
     }
 
@@ -251,8 +262,12 @@ public class DialogUtils
       final EditText editTextObj = new EditText(getActivity());
       editTextObj.setInputType(InputType.TYPE_CLASS_NUMBER);         //set numeric input
       editTextObj.setText(Integer.toString(initialNumberValue));     //set initial value
+      if(maximumLengthValue > 0)
+      {  //positive maximum-length value was given; configure it
+        editTextObj.setFilters(
+                         new InputFilter[] { new InputFilter.LengthFilter(maximumLengthValue) });
+      }
       editTextObj.setSelectAllOnFocus(true);
-      editTextObj.setFilters(new InputFilter[] { new InputFilter.LengthFilter(4) });  //set maxLen
       editTextObj.setOnEditorActionListener(
           new TextView.OnEditorActionListener()
             {           //listener for EditText actions

@@ -11,16 +11,19 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ProgressBar;
+import android.widget.TabHost;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.etheli.util.Averager;
 import com.etheli.util.DialogUtils;
 import com.etheli.util.GuiUtils;
+import com.etheli.util.SwipeGestureDispatcher;
 import net.mabboud.android_tone_player.ContinuousBuzzer;
 import es.pymasde.blueterm.BlueTerm;
 
@@ -28,13 +31,17 @@ import es.pymasde.blueterm.BlueTerm;
  * Class OperationFragment defines the main operations screen and functions.
  */
 public class OperationFragment extends Fragment
+                                     implements SwipeGestureDispatcher.SwipeGestureEventInterface
 {
+    /** Tag string for logging. */
+  public static final String LOG_TAG = "OperationFragment";
   private final ProgramResources programResourcesObj = ProgramResources.getProgramResourcesObj();
   private final MainGuiUpdateHandler mainGuiUpdateHandlerObj = new MainGuiUpdateHandler();
   private TextView versionTextViewObj = null;
   private TextView freqCodeTextViewObj = null;
   private ProgressBar rssiProgressBarObj = null;
   private TextView rssiValueTextViewObj = null;
+  private TabHost operationFragTabHostObj = null;
   private VidReceiverManager vidReceiverManagerObj = null;
   private FrequencyTable videoFrequencyTableObj = null;
   private ChannelTracker videoChannelTrackerObj = null;
@@ -79,12 +86,13 @@ public class OperationFragment extends Fragment
   }
 
   /**
-   * Called when the fragment is visible to the user.
+   * Called when the fragment's activity has been created and this
+   * fragment's view hierarchy instantiated.
    */
   @Override
-  public void onStart()
+  public void onActivityCreated(Bundle savedInstanceState)
   {
-    super.onStart();
+    super.onActivityCreated(savedInstanceState);
          //setup access to display widgets (in 'onCreateView()' is too early):
     versionTextViewObj = (TextView)getActivity().findViewById(R.id.versionTextView);
     freqCodeTextViewObj = (TextView)getActivity().findViewById(R.id.freqCodeTextView);
@@ -93,6 +101,29 @@ public class OperationFragment extends Fragment
          //setup "delta" period for RSSI-audio-tone generator:
     rssiContinuousBuzzerObj.setPausePeriodSeconds(0.1);
     rssiContinuousBuzzerObj.setVolume(25);       //reduce volume
+         //create and setup tab host:
+    operationFragTabHostObj = (TabHost)getActivity().findViewById(R.id.tabHost);
+    operationFragTabHostObj.setup();
+         //"Select" Tab:
+    TabHost.TabSpec specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_select_name));
+    specObj.setContent(R.id.tabSelect);
+    specObj.setIndicator(specObj.getTag());
+    operationFragTabHostObj.addTab(specObj);
+         //"Band" Tab:
+    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_band_name));
+    specObj.setContent(R.id.tabBand);
+    specObj.setIndicator(specObj.getTag());
+    operationFragTabHostObj.addTab(specObj);
+         //"Fine" Tab:
+    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_fine_name));
+    specObj.setContent(R.id.tabFine);
+    specObj.setIndicator(specObj.getTag());
+    operationFragTabHostObj.addTab(specObj);
+         //"Monitor" Tab:
+    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_monitor_name));
+    specObj.setContent(R.id.tabMonitor);
+    specObj.setIndicator(specObj.getTag());
+    operationFragTabHostObj.addTab(specObj);
   }
 
   /**
@@ -103,6 +134,46 @@ public class OperationFragment extends Fragment
   {
     super.onStop();
     rssiContinuousBuzzerObj.stop();    //stop RSSI tone (if sounding)
+  }
+
+  /**
+   * Invoked when a 'swipe' event is detected.  This method implements the
+   * 'SwipeGestureDispatcher.SwipeGestureEventInterface' interface.
+   * @param rightFlag true if the swipe went left to right; false if the
+   * swipe went right to left.
+   */
+  @Override
+  public void onSwipeGesture(boolean rightFlag)
+  {
+    try
+    {
+      if(rightFlag)
+      {  //swipe right
+        final int idx;
+        if((idx=operationFragTabHostObj.getCurrentTab()) <
+                     operationFragTabHostObj.getTabWidget().getTabCount()-1)
+        {  //not at last tab; select next tab
+          operationFragTabHostObj.setCurrentTab(idx+1);
+        }
+        else  //at last tab; select first tab
+          operationFragTabHostObj.setCurrentTab(0);
+      }
+      else
+      {  //swipe left
+        final int idx;
+        if((idx=operationFragTabHostObj.getCurrentTab()) > 0)   //if not at first tab then
+          operationFragTabHostObj.setCurrentTab(idx-1);         //select previous tab
+        else
+        {  //at first tab; select last tab
+          operationFragTabHostObj.setCurrentTab(
+                    operationFragTabHostObj.getTabWidget().getTabCount()-1);
+        }
+      }
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; log it and move on
+      Log.e(LOG_TAG, "Exception in onSwipeGesture()", ex);
+    }
   }
 
   /**
@@ -143,7 +214,7 @@ public class OperationFragment extends Fragment
         break;
       case R.id.freqButton:            //enter tune frequency
         DialogUtils.showEditNumberDialogFragment(getActivity(),R.string.freqsel_dialog_title,
-                                                   videoChannelTrackerObj.getCurFrequencyInMHz(),
+                                                 videoChannelTrackerObj.getCurFrequencyInMHz(),4,
             new DialogUtils.DialogItemSelectedListener()
               {        //invoked after 'Done' button pressed
                 @Override
@@ -153,20 +224,75 @@ public class OperationFragment extends Fragment
                 }
               });
         break;
+      case R.id.autoTuneButton:        //auto-tune to strongest channel
+        vidReceiverManagerObj.autoTuneReceiver();
+        break;
+      case R.id.nextBandButton:        //tune receiver to next freq-code band
+        vidReceiverManagerObj.tuneNextPrevBandChannel(true,true);
+        break;
+      case R.id.nextChanButton:        //tune receiver to next freq-code channel
+        vidReceiverManagerObj.tuneNextPrevBandChannel(false,true);
+        break;
+      case R.id.prevBandButton:        //tune receiver to previous freq-code band
+        vidReceiverManagerObj.tuneNextPrevBandChannel(true,false);
+        break;
+      case R.id.prevChanButton:        //tune receiver to previous freq-code channel
+        vidReceiverManagerObj.tuneNextPrevBandChannel(false,false);
+        break;
       case R.id.upOneMhzButton:        //increase tune frequency by 1 MHZ
         vidReceiverManagerObj.tuneReceiverFreqByOneMhz(true);
         break;
       case R.id.downOneMhzButton:      //decrease tune frequency by 1 MHZ
         vidReceiverManagerObj.tuneReceiverFreqByOneMhz(false);
         break;
-      case R.id.autoTuneButton:        //auto-tune to strongest channel
-        vidReceiverManagerObj.autoTuneReceiver();
+      case R.id.upTenMhzButton:        //increase tune frequency by 10 MHZ
+        vidReceiverManagerObj.tuneReceiverToFrequency(
+                                               videoChannelTrackerObj.getCurFrequencyInMHz()+10);
         break;
-      case R.id.nextChanButton:        //select next channel
-        vidReceiverManagerObj.selectPrevNextReceiverChannel(true);
+      case R.id.downTenMhzButton:      //decrease tune frequency by 10 MHZ
+        vidReceiverManagerObj.tuneReceiverToFrequency(
+                                               videoChannelTrackerObj.getCurFrequencyInMHz()-10);
         break;
-      case R.id.prevChanButton:        //select previous channel
-        vidReceiverManagerObj.selectPrevNextReceiverChannel(false);
+      case R.id.upHunMhzButton:        //increase tune frequency by 100 MHZ
+        vidReceiverManagerObj.tuneReceiverToFrequency(
+                                              videoChannelTrackerObj.getCurFrequencyInMHz()+100);
+        break;
+      case R.id.downHunMhzButton:      //decrease tune frequency by 100 MHZ
+        vidReceiverManagerObj.tuneReceiverToFrequency(
+                                              videoChannelTrackerObj.getCurFrequencyInMHz()-100);
+        break;
+      case R.id.monNextChButton:        //select next (monitor) channel
+        vidReceiverManagerObj.selectPrevNextMonitorChannel(true);
+        break;
+      case R.id.monPrevChButton:        //select previous (monitor) channel
+        vidReceiverManagerObj.selectPrevNextMonitorChannel(false);
+        break;
+      case R.id.minRssiButton:         //edit/send minimum-RSSI-for-scans value
+        DialogUtils.showEditNumberDialogFragment(getActivity(),R.string.minrssi_dialog_title,
+                                               vidReceiverManagerObj.getMinRssiForScansValue(),2,
+            new DialogUtils.DialogItemSelectedListener()
+              {        //invoked after 'Done' button pressed
+                @Override
+                public void itemSelected(int val)
+                {           //send new minimum-RSSI-for-scans value to receiver
+                  vidReceiverManagerObj.sendMinRssiValToReceiver(val);
+                }
+              });
+        break;
+      case R.id.monitorButton:         //send command to enter 'monitor' mode
+        vidReceiverManagerObj.sendMonitorCmdToReceiver();
+        break;
+      case R.id.intervalButton:        //edit/send monitor-interval value
+        DialogUtils.showEditNumberDialogFragment(getActivity(),R.string.monintvl_dialog_title,
+                                               vidReceiverManagerObj.getMonitorIntervalValue(),5,
+            new DialogUtils.DialogItemSelectedListener()
+              {        //invoked after 'Done' button pressed
+                @Override
+                public void itemSelected(int val)
+                {           //send new monitor-interval value to receiver
+                  vidReceiverManagerObj.sendMonIntvlValToReceiver(val);
+                }
+              });
         break;
     }
   }
@@ -260,7 +386,9 @@ public class OperationFragment extends Fragment
             }
             else     //no channel-code string for frequency
               codeStr = "";
-            setFreqCodeTextViewStr("Freq:  " + freqVal + " MHz" + codeStr);
+                             //if message 'obj' is a string then append it:
+            final String dispStr = (msgObj.obj instanceof String) ? ("  " + msgObj.obj) : "";
+            setFreqCodeTextViewStr("Freq:  " + freqVal + " MHz" + codeStr + dispStr);
           }
           setRssiDisplayValue(msgObj.arg2);
           break;

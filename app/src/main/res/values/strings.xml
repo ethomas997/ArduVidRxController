@@ -13,14 +13,32 @@
     <string name="rssitone_checkbox_name">RSSI audio tone</string>
     <string name="channel_button_name">Channel</string>
     <string name="freq_button_name">Frequency</string>
+    <string name="autotune_button_name">Auto Tune</string>
+    <string name="nextchan_button_name">Next Chan</string>
+    <string name="prevchan_button_name">Prev Chan</string>
+    <string name="nextband_button_name">Next Band</string>
+    <string name="prevband_button_name">Prev Band</string>
     <string name="upone_button_name">+1 MHz</string>
     <string name="downone_button_name">-1 MHz</string>
-    <string name="autotune_button_name">Auto Tune</string>
-    <string name="prevch_button_name">Prev Ch</string>
-    <string name="nextch_button_name">Next Ch</string>
+    <string name="upten_button_name">+10 MHz</string>
+    <string name="downten_button_name">-10 MHz</string>
+    <string name="uphun_button_name">+100 MHz</string>
+    <string name="downhun_button_name">-100 MHz</string>
+    <string name="mnextch_button_name">Next Ch</string>
+    <string name="mprevch_button_name">Prev Ch</string>
+    <string name="minrssi_button_name">Min RSSI</string>
+    <string name="monitor_button_name">Monitor</string>
+    <string name="interval_button_name">Interval</string>
+
+    <string name="tab_select_name">Select</string>
+    <string name="tab_band_name">Band</string>
+    <string name="tab_fine_name">Fine</string>
+    <string name="tab_monitor_name">Monitor</string>
 
     <string name="chansel_dialog_title">Select Channel</string>
     <string name="freqsel_dialog_title">Enter Frequency</string>
+    <string name="minrssi_dialog_title">Set Min RSSI for Scans</string>
+    <string name="monintvl_dialog_title">Set Monitor Interval (secs)</string>
     <string name="scanning_status_text">Scanning...</string>
 
     <string name="blueterm_name">BlueTerm</string>
