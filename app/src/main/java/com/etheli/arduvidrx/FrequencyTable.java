@@ -14,7 +14,7 @@ public class FrequencyTable
           new FrequencyBand("F", new short[] {5740,5760,5780,5800,5820,5840,5860,5880}),
           new FrequencyBand("E", new short[] {5705,5685,5665,5645,5885,5905,5925,5945}),
           new FrequencyBand("A", new short[] {5865,5845,5825,5805,5785,5765,5745,5725}),
-          new FrequencyBand("B", new short[] {5733,5752,5711,5790,5809,5828,5847,5866}),
+          new FrequencyBand("B", new short[] {5733,5752,5771,5790,5809,5828,5847,5866}),
           new FrequencyBand("R", new short[] {5658,5695,5732,5769,5806,5843,5880,5917}),
           new FrequencyBand("L", new short[] {5362,5399,5436,5473,5510,5547,5584,5621})
   };
