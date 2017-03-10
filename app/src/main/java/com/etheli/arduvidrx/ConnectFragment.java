@@ -64,6 +64,18 @@ public class ConnectFragment extends Fragment
               }
             });
     }
+    if((buttonObj=(Button)viewObj.findViewById(R.id.connTestButton)) != null)
+    {  //button found OK; setup click action
+      buttonObj.setOnClickListener(
+          new View.OnClickListener()
+            {
+              @Override
+              public void onClick(View vObj)
+              {
+                connectTestButtonAction();            //'Test' button
+              }
+            });
+    }
     return viewObj;
   }
 
@@ -138,6 +150,8 @@ public class ConnectFragment extends Fragment
 
   /**
    * Called when the user clicks the 'Connect' or the 'Devices' button.
+   * @param devButtonFlag true if invoked via 'Devices' button (and select-device
+   * activity should be shown).
    */
   private void connectDevicesButtonAction(boolean devButtonFlag)
   {
@@ -157,6 +171,18 @@ public class ConnectFragment extends Fragment
                                                  //attempt connection to device address:
         btServiceObj.connectToDeviceAddress(lastDeviceAddressString);
       }
+    }
+  }
+
+  /**
+   * Called when the user clicks the 'Test' button.
+   */
+  private void connectTestButtonAction()
+  {
+    final BluetoothSerialService btServiceObj;
+    if((btServiceObj=programResourcesObj.getBluetoothSerialServiceObj()) != null)
+    {  //send message-state-connected message to main activity (for test purposes)
+      btServiceObj.testSendStateConnectedMessage();
     }
   }
 }

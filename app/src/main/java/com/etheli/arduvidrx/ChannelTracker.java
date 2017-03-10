@@ -52,7 +52,7 @@ public class ChannelTracker
   /**
    * Returns array index for frequency-channel-item object for current channel.
    * @return Array index for frequency-channel-item object for current channel,
-   * or null if no item matches the current frequency.
+   * or -1 if no item matches the current frequency.
    */
   public synchronized int getCurFreqChannelItemIdx()
   {

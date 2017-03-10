@@ -1,6 +1,6 @@
 //DialogUtils.java:  Dialog-helper classes and utilities.
 //
-// 1/24/2017 -- [ET]
+//  3/8/2017 -- [ET]
 //
 
 package com.etheli.util;
@@ -38,7 +38,7 @@ public class DialogUtils
    * @param activityObj parent activity for dialog.
    * @param titleId resource ID of title for dialog.
    * @param charSeqArr array of items to be displayed.
-   * @param initIdx index of initial item to be selected.
+   * @param initIdx index of initial item to be selected, or -1 for none.
    * @param closeButtonId resource ID of text for 'close' button.
    * @param listenerObj listener to be invoked when an item is selected.
    * @return A new DialogFragment object.
@@ -57,7 +57,7 @@ public class DialogUtils
    * @param activityObj parent activity for dialog.
    * @param titleStr title string for dialog, or null for none.
    * @param charSeqArr array of items to be displayed.
-   * @param initIdx index of initial item to be selected.
+   * @param initIdx index of initial item to be selected, or -1 for none.
    * @param closeButtonStr text for 'close' button, or null for none.
    * @param listenerObj listener to be invoked when an item is selected.
    * @return A new DialogFragment object.
@@ -77,7 +77,7 @@ public class DialogUtils
    * Selecting an item will dismiss the dialog and invoke the listener.
    * @param titleStr title string for dialog, or null for none.
    * @param charSeqArr array of items to be displayed.
-   * @param initIdx index of initial item to be selected.
+   * @param initIdx index of initial item to be selected, or -1 for none.
    * @param closeButtonStr text for 'close' button, or null for none.
    * @param listenerObj listener to be invoked when an item is selected.
    * @return A new DialogFragment object.
@@ -174,7 +174,7 @@ public class DialogUtils
      * before the dialog is displayed.
      * @param titleStr title string for dialog, or null for none.
      * @param charSeqArr array of items to be displayed.
-     * @param initIdx index of initial item to be selected.
+     * @param initIdx index of initial item to be selected, or -1 for none.
      * @param closeButtonStr text for 'close' button, or null for none.
      * @param listenerObj listener to be invoked when an item is selected.
      */

@@ -29,4 +29,12 @@
         android:textSize="16sp"
         android:layout_marginTop="10sp"
         android:layout_marginLeft="10sp" />
+    <Button
+        android:id="@+id/connTestButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/conntest_button_name"
+        android:minWidth="95dp"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="10sp" />
 </LinearLayout>

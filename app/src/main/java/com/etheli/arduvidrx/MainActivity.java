@@ -19,7 +19,6 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
-import com.etheli.util.GuiUtils;
 import com.etheli.util.SwipeGestureDispatcher;
 
 /**

@@ -1,6 +1,6 @@
 //VidReceiverManager.java:  Manages command I/O for an ArduVidRx unit.
 //
-// 12/30/2016 -- [ET]
+//   3/6/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -48,6 +48,8 @@ public class VidReceiverManager
   public static final byte [] VIDRX_MNEXTCH_CMD = ("N"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_MPREVCH_CMD = ("P"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_MONITOR_CMD = ("M"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_CHANSCAN_CMD = ("S"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_FULLSCAN_CMD = ("F"+VIDRX_CR_STR).getBytes();
   public static final String VIDRX_TUNE_PRESTR = "T";
   public static final String VIDRX_MINRSSI_PRESTR = "XM";
   public static final String VIDRX_MONINTVL_PRESTR = "XI";
@@ -64,9 +66,12 @@ public class VidReceiverManager
   private static final int VIDCMD_DOWNONEMHZ_MSGC = 9;
   private static final int VIDCMD_MNEXTCH_MSGC = 10;
   private static final int VIDCMD_MPREVCH_MSGC = 11;
-  private static final int VIDCMD_SETMINRSSI_MSGC = 12;
-  private static final int VIDCMD_MONITOR_MSGC = 13;
-  private static final int VIDCMD_SETMONINTVL_MSGC = 14;
+  private static final int VIDCMD_MONITOR_MSGC = 12;
+  private static final int VIDCMD_MONRESCAN_MSGC = 13;
+  private static final int VIDCMD_SETMINRSSI_MSGC = 14;
+  private static final int VIDCMD_SETMONINTVL_MSGC = 15;
+  private static final int VIDCMD_CHANSCAN_MSGC = 16;
+  private static final int VIDCMD_FULLSCAN_MSGC = 17;
 
   private static final String SCANNING_CHECK_STR = " Scanning";
   private static final int SCANNING_CHKSTR_LEN = SCANNING_CHECK_STR.length();
@@ -140,6 +145,18 @@ public class VidReceiverManager
     {
       try { Thread.sleep(250); }            //start with delay in case receiver
       catch(InterruptedException ex) {}     // needs some setup time
+
+      if(bluetoothSerialServiceObj.getState() != BluetoothSerialService.STATE_CONNECTED)
+      {  //not connected (test mode)
+        final String msgStr = parentActivityObj.getString(R.string.testmode_message);
+        if(mainGuiUpdateHandlerObj != null)
+        {
+          mainGuiUpdateHandlerObj.obtainMessage(      //show message in 'version' text view
+                                     ProgramResources.MAINGUI_UPD_VERSION,msgStr).sendToTarget();
+        }
+        Log.d(LOG_TAG,msgStr);
+        return;
+      }
 
       Log.d(LOG_TAG, "Began manager startup");
 
@@ -288,6 +305,22 @@ public class VidReceiverManager
   }
 
   /**
+   * Sends command to enter monitor-mode to receiver.
+   */
+  public void sendMonitorCmdToReceiver()
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_MONITOR_MSGC);
+  }
+
+  /**
+   * Sends a (re)scan command to the receiver.
+   */
+  public void sendMonRescanCmdToReceiver()
+  {
+    commandHandlerThreadObj.sendMessage(VIDCMD_MONRESCAN_MSGC);
+  }
+
+  /**
    * Sends a new minimum-RSSI-for-scans value to the receiver.
    * @param minRssiVal new minimum-RSSI-for-scans value.
    */
@@ -297,20 +330,23 @@ public class VidReceiverManager
   }
 
   /**
-   * Sends command to enter monitor-mode to receiver.
-   */
-  public void sendMonitorCmdToReceiver()
-  {
-    commandHandlerThreadObj.sendMessage(VIDCMD_MONITOR_MSGC);
-  }
-
-  /**
    * Sends a new monitor-interval value to the receiver.
    * @param intervalVal new monitor-interval value (in seconds).
    */
   public void sendMonIntvlValToReceiver(int intervalVal)
   {
     commandHandlerThreadObj.sendMessage(VIDCMD_SETMONINTVL_MSGC,intervalVal);
+  }
+
+  /**
+   * Starts the scan-and-select-channel function.  A scan is performed,
+   * and then the result is shown (with RSSI values) in a select-channel
+   * dialog.
+   * @param fullFlag false for channel-scan ('S'); true for full-scan ('F').
+   */
+  public void startScanSelectChanFunction(boolean fullFlag)
+  {
+    commandHandlerThreadObj.sendMessage(fullFlag ? VIDCMD_FULLSCAN_MSGC : VIDCMD_CHANSCAN_MSGC);
   }
 
   /**
@@ -333,6 +369,7 @@ public class VidReceiverManager
 
   /**
    * Receives and processes command messages via CommandHandlerThread.
+   * The processing is performed on a (non-UI) looper-worker thread.
    * @param msgObj handler-message object.
    */
   private void handleReceiverCommandMessage(Message msgObj)
@@ -370,9 +407,6 @@ public class VidReceiverManager
       case VIDCMD_MPREVCH_MSGC:        //select previous (monitor) channel
         doSendNextPrevMonToReceiver(VIDRX_MPREVCH_CMD);
         break;
-      case VIDCMD_SETMINRSSI_MSGC:     //send new min-RSSI-for-scans value to receiver
-        doSendMinRssiValToReceiver(msgObj.arg1);
-        break;
       case VIDCMD_MONITOR_MSGC:        //enter (or exit) monitor mode
         if(!monitorModeActiveFlag)
         {  //monitor mode not active; start it now
@@ -385,8 +419,20 @@ public class VidReceiverManager
           monitorModeActiveFlag = false;
         }
         break;
+      case VIDCMD_MONRESCAN_MSGC:       //send (re)scan command
+        doSendScanCommandToReceiver(VIDRX_CHANSCAN_CMD);
+        break;
+      case VIDCMD_SETMINRSSI_MSGC:     //send new min-RSSI-for-scans value to receiver
+        doSendMinRssiValToReceiver(msgObj.arg1);
+        break;
       case VIDCMD_SETMONINTVL_MSGC:    //send new monitor-interval value to receiver
         doSendMonIntvlValToReceiver(msgObj.arg1);
+        break;
+      case VIDCMD_CHANSCAN_MSGC:       //do channel-scan and select channel
+        doScanSelectChanFunction(VIDRX_CHANSCAN_CMD);
+        break;
+      case VIDCMD_FULLSCAN_MSGC:       //do full-scan and select channel
+        doScanSelectChanFunction(VIDRX_FULLSCAN_CMD);
         break;
       case VIDCMD_TERMINATE_MSGC:      //terminate thread/looper for command handler
         commandHandlerThreadObj.quitThreadLooper();
@@ -477,6 +523,46 @@ public class VidReceiverManager
         processReceiverScanning();               //wait for scanning to finish
     }
     resumeReceiverUpdateWorker();
+  }
+
+  /**
+   * Performs the work of sending a scan command ('S' or 'F') to the
+   * receiver and checking if the receiver has started scanning.
+   * @param cmdBuff command to be sent; channel-scan ('S') or full-scan
+   * command ('F').
+   * @return The scan-data results string returned by the receiver, or null
+   * if no response received.
+   */
+  public String doSendScanCommandToReceiver(byte [] cmdBuff)
+  {
+    pauseReceiverUpdateWorker();
+    String retStr = null;
+    if(outputCmdNoResponse(cmdBuff) != null)     //send 'S' or 'F' command:
+    {  //initial newline response received OK
+      if(peekFirstReceivedChar() == ' ')         //if receiver is scanning then
+        processReceiverScanning();               //wait for scanning to finish
+      retStr = getNextReceivedLine(RESP_WAIT_TIMEMS);      //get scan-data results
+//      Log.d(LOG_TAG, "doSendScanCommandToReceiver received:  " + retStr);
+    }
+    resumeReceiverUpdateWorker();
+    return retStr;
+  }
+
+  /**
+   * Performs the work for the scan-and-select-channel function.  A scan
+   * is performed, and then the result is shown (with RSSI values) in a
+   * select-channel dialog.
+   * @param cmdBuff command to be sent; channel-scan ('S') or full-scan
+   * command ('F').
+   */
+  public void doScanSelectChanFunction(byte [] cmdBuff)
+  {
+    final String scanStr = doSendScanCommandToReceiver(cmdBuff);
+    if(mainGuiUpdateHandlerObj != null)
+    {  //handler OK; send entries list to OperationFragment for choice dialog
+      mainGuiUpdateHandlerObj.obtainMessage(
+                                 ProgramResources.MAINGUI_UPD_SELCHANNEL,scanStr).sendToTarget();
+    }
   }
 
   /**

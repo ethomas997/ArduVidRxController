@@ -1,6 +1,6 @@
 //ProgramResources.java:  Global program resources singleton.
 //
-//   2/5/2017 -- [ET]
+//   3/8/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -27,6 +27,8 @@ public class ProgramResources
   public static final int MAINGUI_UPD_SCANBEGIN = 6;
     /** Main-GUI update handler:  Video receiver scanning finished. */
   public static final int MAINGUI_UPD_SCANEND = 7;
+    /** Main-GUI update handler:  Show select-channel choice dialog. */
+  public static final int MAINGUI_UPD_SELCHANNEL = 8;
 
     /** Terminal state:  Started. */
   public static final int TERMINAL_STATE_STARTED = 1;

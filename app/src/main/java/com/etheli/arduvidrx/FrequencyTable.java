@@ -5,6 +5,10 @@
 
 package com.etheli.arduvidrx;
 
+import android.util.Log;
+
+import java.util.ArrayList;
+
 /**
  * Class FrequencyTable defines the video-frequencies table and utilities.
  */
@@ -18,8 +22,9 @@ public class FrequencyTable
           new FrequencyBand("R", new short[] {5658,5695,5732,5769,5806,5843,5880,5917}),
           new FrequencyBand("L", new short[] {5362,5399,5436,5473,5510,5547,5584,5621})
   };
-
   private final FreqChannelItem[] freqChannelItemsArray;
+    /** Tag string for logging. */
+  public static final String LOG_TAG = "FreqTable";
 
   /**
    * Creates the frequency-table object (and loads the frequency-channel-items array).
@@ -57,7 +62,8 @@ public class FrequencyTable
   /**
    * Returns the frequency-channel-item object for the given channel code
    * and frequency value.
-   * @param channelCodeStr code value for channel (i.e., "F4").
+   * @param channelCodeStr code value for channel (i.e., "F4"), or null for
+   * none (match any).
    * @param frequencyVal frequency value for channel.
    * @return The matching frequency-channel-item object, or null if no match.
    */
@@ -65,8 +71,11 @@ public class FrequencyTable
   {
     for(int i=0; i<freqChannelItemsArray.length; ++i)
     {  //for each item in array; check for match
-      if(freqChannelItemsArray[i].equals(channelCodeStr,frequencyVal))
-        return freqChannelItemsArray[i];
+      if(freqChannelItemsArray[i].frequencyVal == frequencyVal)
+      {  //frequency value matches; also check channel code (if given)
+        if(channelCodeStr == null || freqChannelItemsArray[i].equals(channelCodeStr,frequencyVal))
+          return freqChannelItemsArray[i];
+      }
     }
     return null;
   }
@@ -79,6 +88,76 @@ public class FrequencyTable
   public FreqChannelItem getFreqChanItemForIdx(int idx)
   {
     return (idx >= 0 && idx < freqChannelItemsArray.length) ? freqChannelItemsArray[idx] : null;
+  }
+
+  /**
+   * Returns a frequency-channel-items array containing items matching the
+   * frequencies (and RSSI values) in the given list string.
+   * @param scanStr list string of space-delimited "freq=RSSI" entries.
+   * @return A new array of FreqChannelItem objects.
+   */
+  public FreqChannelItem[] getFChanItemsArrForScanStr(String scanStr)
+  {
+    final ArrayList<FreqChannelItem> itemsList = new ArrayList<FreqChannelItem>();
+    try
+    {
+      final int scanStrLen = scanStr.length();
+      int ePos, sPos = 0;
+      FreqChannelItem itemObj;
+      while(sPos < scanStrLen)
+      {  //for each "freq=RSSI" entry
+        if((ePos=scanStr.indexOf(' ',sPos+1)) < 0)
+          ePos = scanStrLen;
+        if(ePos > sPos)
+        {  //non-empty entry; parse into new 'FreqChannelItem' object
+          if((itemObj=createItemForScanEntryStr(scanStr.substring(sPos,ePos))) != null)
+            itemsList.add(itemObj);
+          else
+          {  //error parsing
+            Log.e(LOG_TAG, "Unable to parse entry in getFChanItemsArrForScanStr():  " +
+                                                                   scanStr.substring(sPos,ePos));
+          }
+        }
+        sPos = ePos + 1;
+      }
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; log it and move on
+      Log.e(LOG_TAG, "Exception in getFChanItemsArrForScanStr()", ex);
+    }
+         //convert list to array and return it:
+    final FreqChannelItem[] retArr = new FreqChannelItem[itemsList.size()];
+    return itemsList.toArray(retArr);
+  }
+
+  /**
+   * Creates a frequency-channel-item object for the given scan-entry string.
+   * @param entryStr a string containing a "freq=RSSI" entry.
+   * @return A new frequency-channel-item object containing the specified
+   * frequency and RSSI values, or null if a parsing error occurred.
+   */
+  protected FreqChannelItem createItemForScanEntryStr(String entryStr)
+  {
+    try
+    {
+      final int p;
+      if((p=entryStr.indexOf('=')) > 0 && p < entryStr.length()-1)
+      {  //found equals-sign character; parse numbers on either side
+        final short freqVal = Short.parseShort(entryStr.substring(0,p).trim());
+        final short rssiVal = Short.parseShort(entryStr.substring(p+1).trim());
+        FreqChannelItem itemObj;  //get item with matching frequency from table:
+        if((itemObj=getFreqChannelItemObj(null,freqVal)) != null)
+          itemObj = new FreqChannelItem(itemObj);     //create copy of item from table
+        else
+          itemObj = new FreqChannelItem("",freqVal,-1);    //create new item for freq value
+        itemObj.setDisplayRssiValue(rssiVal);
+        return itemObj;
+      }
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; return null
+    }
+    return null;
   }
 
 
@@ -112,11 +191,12 @@ public class FrequencyTable
     public final String channelCodeStr;
     public final short frequencyVal;
     public final int itemArrayIndex;
-    public final String displayString;
+    protected String displayString;
+    protected short displayRssiValue = -1;       //-1 == don't show
 
     /**
      * Creates a frequency (channel) object.
-     * @param channelCodeStr code value for channel (i.e., "F4").
+     * @param channelCodeStr code value for channel (i.e., "F4"), or null for none.
      * @param frequencyVal frequency value for channel.
      * @param itemArrayIndex array-index value for item.
      */
@@ -125,7 +205,63 @@ public class FrequencyTable
       this.channelCodeStr = channelCodeStr;
       this.frequencyVal = frequencyVal;
       this.itemArrayIndex = itemArrayIndex;
-      displayString = channelCodeStr + "    " + Short.toString(frequencyVal);
+      updateDisplayString();
+    }
+
+    /**
+     * Creates a copy of a frequency (channel) object.
+     * @param itemObj source object for copy.
+     */
+    public FreqChannelItem(FreqChannelItem itemObj)
+    {
+      this.channelCodeStr = itemObj.channelCodeStr;
+      this.frequencyVal = itemObj.frequencyVal;
+      this.itemArrayIndex = itemObj.itemArrayIndex;
+      this.displayRssiValue = itemObj.displayRssiValue;
+      updateDisplayString();
+    }
+
+    /**
+     * Creates a copy of a frequency (channel) object, but with the given
+     * array-index value.
+     * @param itemObj source object for copy.
+     * @param idxVal array-index value for item.
+     */
+    public FreqChannelItem(FreqChannelItem itemObj, int idxVal)
+    {
+      this.channelCodeStr = itemObj.channelCodeStr;
+      this.frequencyVal = itemObj.frequencyVal;
+      this.itemArrayIndex = idxVal;
+      this.displayRssiValue = itemObj.displayRssiValue;
+      updateDisplayString();
+    }
+
+    /**
+     * Updates the display string for item using its current values.
+     */
+    protected final void updateDisplayString()
+    {
+      displayString = ((channelCodeStr != null) ? channelCodeStr : "") + "    " + frequencyVal +
+                            ((displayRssiValue >= 0) ? ("            " + displayRssiValue) : "");
+    }
+
+    /**
+     * Sets the RSSI value to be shown in the display string.
+     * @param val RSSI value to be shown, or -1 for none (don't show any value).
+     */
+    public void setDisplayRssiValue(short val)
+    {
+      displayRssiValue = val;
+      updateDisplayString();
+    }
+
+    /**
+     * Returns the RSSI value to be shown in the display string.
+     * @return The RSSI value to be shown, or -1 for none (don't show any value).
+     */
+    public short getDisplayRssiValue()
+    {
+      return displayRssiValue;
     }
 
     /**

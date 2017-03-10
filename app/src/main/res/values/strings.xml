@@ -7,6 +7,7 @@
     <string name="terminal_name">ArduVidRx Terminal</string>
     <string name="connect_button_name">Connect</string>
     <string name="devices_button_name">Devices</string>
+    <string name="conntest_button_name">Test</string>
     <string name="disconnect_button_name">Disconnect</string>
     <string name="term_button_name">Terminal</string>
     <string name="rssi_label_text">RSSI:</string>
@@ -29,11 +30,14 @@
     <string name="minrssi_button_name">Min RSSI</string>
     <string name="monitor_button_name">Monitor</string>
     <string name="interval_button_name">Interval</string>
+    <string name="rescan_button_name">Rescan</string>
+    <string name="chanscan_button_name">Chan Scan</string>
+    <string name="fullscan_button_name">Full Scan</string>
 
-    <string name="tab_select_name">Select</string>
-    <string name="tab_band_name">Band</string>
+    <string name="tab_tune_name">Tune</string>
     <string name="tab_fine_name">Fine</string>
     <string name="tab_monitor_name">Monitor</string>
+    <string name="tab_scan_name">Scan</string>
 
     <string name="chansel_dialog_title">Select Channel</string>
     <string name="freqsel_dialog_title">Enter Frequency</string>
@@ -64,6 +68,9 @@
     <string name="errfetch_version_info">Unable to fetch version info from receiver</string>
     <string name="errfetch_chanrssi_vals">Unable to fetch chan/RSSI from receiver</string>
     <string name="errfetch_response">No response from receiver</string>
+    <string name="testmode_message">"Not connected (test mode)"</string>
+	<string name="msg_unable_scanrec">Unable to receive scan data</string>
+	<string name="msg_unable_scanparse">Unable to parse scan data</string>
 
     <!--  DeviceListActivity -->
     <string name="scanning">scanning for devices...</string>

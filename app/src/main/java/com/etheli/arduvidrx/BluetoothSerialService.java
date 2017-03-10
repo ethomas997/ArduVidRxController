@@ -175,6 +175,8 @@ public class BluetoothSerialService {
             stop();
             startResumeService();
         }
+        else
+            setState(STATE_NONE);
     }
 
     /**
@@ -230,7 +232,17 @@ public class BluetoothSerialService {
     }
 
     /**
-     * Set the current state of the connection
+     * Sends a message-state-connected message to the parent activity (for test purposes).
+     */
+    public void testSendStateConnectedMessage() {
+        // Create message object
+        final Message msgObj = mHandler.obtainMessage(MESSAGE_STATE_CHANGE, STATE_CONNECTED, -1);
+        // Give the new state to the Handler
+        msgObj.sendToTarget();
+    }
+
+    /**
+     * Set the current state of the connection.
      * @param state  An integer defining the current connection state
      */
     private synchronized void setState(int state) {
