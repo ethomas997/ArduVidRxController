@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Fragment for graph showing scan data. -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:keepScreenOn="true">
+
+    <com.github.mikephil.charting.charts.BarChart
+        android:id="@+id/graphScanChart"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:background="@android:color/white" />
+
+    <TextView
+        android:id="@+id/statusGraphTextView"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:textSize="20sp"
+        android:layout_below="@id/graphScanChart"
+        android:layout_marginTop="20sp"
+        android:layout_marginLeft="10sp"
+        android:layout_marginBottom="20sp" />
+    <Button
+        android:id="@+id/valuesGraphButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/valuesgraph_button_name"
+        android:layout_below="@id/statusGraphTextView"
+        android:minWidth="105dp"
+        android:layout_marginLeft="10sp" />
+    <Button
+        android:id="@+id/pauseGraphButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/pausegraph_button_name"
+        android:layout_below="@id/statusGraphTextView"
+        android:layout_toRightOf="@id/valuesGraphButton"
+        android:minWidth="105dp"
+        android:layout_marginLeft="10sp" />
+    <Button
+        android:id="@+id/closeGraphButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/closegraph_button_name"
+        android:layout_below="@id/statusGraphTextView"
+        android:layout_toRightOf="@id/pauseGraphButton"
+        android:minWidth="105dp"
+        android:layout_marginLeft="10sp" />
+
+</RelativeLayout>

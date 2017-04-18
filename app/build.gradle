@@ -15,7 +15,11 @@ android {
     }
     productFlavors {
     }
+    lintOptions {
+        abortOnError false
+    }
 }
 
 dependencies {
+    compile 'com.github.PhilJay:MPAndroidChart:v3.0.1'
 }

@@ -1,6 +1,6 @@
 //ChannelTracker.java:  Tracks the currently-tuned video-receiver channel.
 //
-//  1/27/2017 -- [ET]
+//  3/31/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -66,5 +66,14 @@ public class ChannelTracker
   public synchronized int getCurFrequencyInMHz()
   {
     return curFrequencyInMHzVal;
+  }
+
+  /**
+   * Returns code value for current channel (i.e., "F4"), or null if none.
+   * @return Code value for current channel (i.e., "F4"), or null if none.
+   */
+  public synchronized String getCurChannelCode()
+  {
+    return (curFreqChannelItemObj != null) ? curFreqChannelItemObj.channelCodeStr : null;
   }
 }

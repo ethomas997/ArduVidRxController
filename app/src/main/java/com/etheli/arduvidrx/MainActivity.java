@@ -1,6 +1,6 @@
 //MainActivity.java:  Defines the main activity for the ArduVidRx Controller.
 //
-// 12/31/2016 -- [ET]
+//  4/16/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -43,7 +43,6 @@ public class MainActivity extends Activity
   private VidReceiverManager vidReceiverManagerObj = null;
   private ConnectFragment connectFragmentObj = null;
   private int bluetoothSerServiceState = BluetoothSerialService.STATE_NONE;
-  private boolean activityIsRunningFlag = false;
   private boolean terminalIsActiveFlag = false;
   private String lastDeviceNameString = null;
   private String lastDeviceAddressString = null;
@@ -58,7 +57,6 @@ public class MainActivity extends Activity
   protected void onCreate(Bundle savedInstanceState)
   {
     super.onCreate(savedInstanceState);
-    activityIsRunningFlag = true;
     loadPersistentSettings();
     setContentView(R.layout.fragment_container);      //show content frame
 
@@ -96,8 +94,14 @@ public class MainActivity extends Activity
   {
     super.onResume();
     if(bluetoothSerialServiceObj != null)
-    {       //if created then start or resume service
-      bluetoothSerialServiceObj.startResumeService();
+    {  //service has been created
+              //if local 'bluetoothSerServiceState' is "connected" but service state
+              // is "not connected" then test mode is active; otherwise do start/resume:
+      if(bluetoothSerServiceState != BluetoothSerialService.STATE_CONNECTED ||
+                  bluetoothSerialServiceObj.getState() == BluetoothSerialService.STATE_CONNECTED)
+      {
+        bluetoothSerialServiceObj.startResumeService();
+      }
     }
   }
 
@@ -108,7 +112,6 @@ public class MainActivity extends Activity
   public void onDestroy()
   {
     super.onDestroy();
-    activityIsRunningFlag = false;
     if(bluetoothSerialServiceObj != null)
       bluetoothSerialServiceObj.stop();
   }
@@ -158,10 +161,11 @@ public class MainActivity extends Activity
     fragTransObj.replace(R.id.fragment_container,opFragObj);    //swap in new fragment
 //    transaction.addToBackStack(null);
     fragTransObj.commit();
-         //setup so operation-fragment TabHost responds to swipe gestures:
-    swipeGestureDispatcherObj.setSwipeGestureEventIntfObj(opFragObj);
     if(vidReceiverManagerObj != null)
       vidReceiverManagerObj.startManager();      //start receiver-manager threads
+         //if tabs then setup so operation-fragment TabHost responds to swipe gestures:
+    if(opFragObj.isTabHostInUse())
+      swipeGestureDispatcherObj.setSwipeGestureEventIntfObj(opFragObj);
   }
 
   //Stops the video-receiver manager and shows the ConnectFragment.
@@ -171,8 +175,7 @@ public class MainActivity extends Activity
       vidReceiverManagerObj.stopManager();       //stop receiver-manager threads
          //clear swipe-gesture dispatches to operation-fragment TabHost:
     swipeGestureDispatcherObj.setSwipeGestureEventIntfObj(null);
-
-    if(activityIsRunningFlag)
+    if(!isFinishing())
     {  //activity not exiting ('onDestroy()' not called)
       final FragmentManager fragMgrObj = getFragmentManager();
       final Fragment fObj = fragMgrObj.findFragmentById(R.id.fragment_container);
@@ -182,8 +185,9 @@ public class MainActivity extends Activity
           connectFragmentObj = new ConnectFragment();   //create new fragment
         connectFragmentObj.setLastDeviceInfo(lastDeviceNameString,lastDeviceAddressString);
         final FragmentTransaction fragTransObj = fragMgrObj.beginTransaction();
+        if(fragMgrObj.getBackStackEntryCount() > 0)
+          fragMgrObj.popBackStackImmediate();         //clear any back-stack actions
         fragTransObj.replace(R.id.fragment_container,connectFragmentObj);   //swap in new fragment
-//        transaction.addToBackStack(null);
         fragTransObj.commit();
       }
     }
@@ -238,64 +242,69 @@ public class MainActivity extends Activity
             @Override
             public void handleMessage(Message msgObj)
             {
-              if(!terminalIsActiveFlag)
-              {  //not showing serial terminal
-                switch(msgObj.what)
-                {
-                  case BluetoothSerialService.MESSAGE_STATE_CHANGE:
-                    switch(msgObj.arg1)
-                    {
-                      case BluetoothSerialService.STATE_CONNECTED:
-                        connectFragmentObj = null;         //release ConnectFragment object
-                        startReceiverOperations();
-                        break;
-                      case BluetoothSerialService.STATE_CONNECTING:
-                        if(connectFragmentObj == null)
-                        {  //ConnectFragment not active (to display message); show as popup
-                          Toast.makeText(getApplicationContext(),
-                                  getString(R.string.msg_connecting), Toast.LENGTH_SHORT).show();
-                        }
-                        lastDeviceNameString = null;       //clear so if connect fails next
-                        lastDeviceAddressString = null;    // 'Connect' click will show devices
-                        break;
-                      case BluetoothSerialService.STATE_LISTEN:
-                      case BluetoothSerialService.STATE_NONE:
-                        if(bluetoothSerServiceState == BluetoothSerialService.STATE_CONNECTED)
-                        {  //going from connected to not connected
-                          stopReceiverOperations();   //stop vid-manager and show ConnectFragment
-                        }
-                        break;
-                    }
-                    bluetoothSerServiceState = msgObj.arg1;     //track state
-                    break;
-                  case BluetoothSerialService.MESSAGE_DEVICE_INFO:
-                    // save connected device's info
-                    lastDeviceNameString =
-                                  msgObj.getData().getString(BluetoothSerialService.DEVICE_NAME);
-                    lastDeviceAddressString =
-                               msgObj.getData().getString(BluetoothSerialService.DEVICE_ADDRESS);
-                    Toast.makeText(getApplicationContext(), getString(R.string.msg_connected_to) +
-                                          " " + lastDeviceNameString, Toast.LENGTH_SHORT).show();
-                    saveDevPersistentSettings();        //save device persistent settings
-                    break;
-                  case BluetoothSerialService.MESSAGE_SHOWTEXT:
-                    if(connectFragmentObj == null)
-                    {  //ConnectFragment not active (to display message); show as popup
-                      Toast.makeText(getApplicationContext(),
-                                    msgObj.getData().getString(BluetoothSerialService.SHOW_TEXT),
-                                                                      Toast.LENGTH_SHORT).show();
-                    }
-                    break;
+              try
+              {
+                if(!terminalIsActiveFlag)
+                {  //not showing serial terminal
+                  switch(msgObj.what)
+                  {
+                    case BluetoothSerialService.MESSAGE_STATE_CHANGE:
+                      switch(msgObj.arg1)
+                      {
+                        case BluetoothSerialService.STATE_CONNECTED:
+                          connectFragmentObj = null;         //release ConnectFragment object
+                          startReceiverOperations();
+                          break;
+                        case BluetoothSerialService.STATE_CONNECTING:
+                          if(connectFragmentObj == null)
+                          {  //ConnectFragment not active (to display message); show as popup
+                            Toast.makeText(getApplicationContext(),
+                                    getString(R.string.msg_connecting), Toast.LENGTH_SHORT).show();
+                          }
+                          lastDeviceNameString = null;       //clear so if connect fails next
+                          lastDeviceAddressString = null;    // 'Connect' click will show devices
+                          break;
+                        case BluetoothSerialService.STATE_LISTEN:
+                        case BluetoothSerialService.STATE_NONE:
+                          if(bluetoothSerServiceState == BluetoothSerialService.STATE_CONNECTED)
+                          {  //going from connected to not connected
+                            stopReceiverOperations();   //stop vid-manager and show ConnectFragment
+                          }
+                          break;
+                      }
+                      bluetoothSerServiceState = msgObj.arg1;     //track state
+                      break;
+                    case BluetoothSerialService.MESSAGE_DEVICE_INFO:
+                      // save connected device's info
+                      lastDeviceNameString =
+                                    msgObj.getData().getString(BluetoothSerialService.DEVICE_NAME);
+                      lastDeviceAddressString =
+                                 msgObj.getData().getString(BluetoothSerialService.DEVICE_ADDRESS);
+                      Toast.makeText(getApplicationContext(), getString(R.string.msg_connected_to) +
+                                            " " + lastDeviceNameString, Toast.LENGTH_SHORT).show();
+                      saveDevPersistentSettings();        //save device persistent settings
+                      break;
+                    case BluetoothSerialService.MESSAGE_SHOWTEXT:
+                      if(connectFragmentObj == null)
+                      {  //ConnectFragment not active (to display message); show as popup
+                        Toast.makeText(getApplicationContext(),
+                                      msgObj.getData().getString(BluetoothSerialService.SHOW_TEXT),
+                                                                        Toast.LENGTH_SHORT).show();
+                      }
+                      break;
+                  }
+                          //if ConnectFragment still active then dispatch update to it:
+                  if(connectFragmentObj != null)
+                    connectFragmentObj.updateConnectStatus(msgObj);
                 }
-                        //if ConnectFragment still active then dispatch update to it:
-                if(connectFragmentObj != null)
-                  connectFragmentObj.updateConnectStatus(msgObj);
+                else
+                {  //showing serial terminal
+                  programResourcesObj.invokeTerminalMsgHandler(msgObj);     //send msg to terminal
+                }
               }
-              else
-              {  //showing serial terminal
-                if(msgObj.what == BluetoothSerialService.MESSAGE_STATE_CHANGE)
-                  bluetoothSerServiceState = msgObj.arg1;                 //track state
-                programResourcesObj.invokeTerminalMsgHandler(msgObj);     //send msg to terminal
+              catch(Exception ex)
+              {  //some kind of exception error; log it
+                Log.e(LOG_TAG, "Exception in bluetoothHandlerObj.handleMessage()", ex);
               }
             }
           };
@@ -307,12 +316,19 @@ public class MainActivity extends Activity
             @Override
             public void write(byte[] buffer, int length)
             {
-              if(terminalIsActiveFlag)           //if active then send msg to term
-                programResourcesObj.invokeTerminalWriteRecvr(buffer,length);
-              else
-              {  //terminal is not active
-                if(vidReceiverManagerObj != null)
-                  vidReceiverManagerObj.storeReceivedChars(buffer,length);
+              try
+              {
+                if(terminalIsActiveFlag)           //if active then send msg to term
+                  programResourcesObj.invokeTerminalWriteRecvr(buffer,length);
+                else
+                {  //terminal is not active
+                  if(vidReceiverManagerObj != null)
+                    vidReceiverManagerObj.storeReceivedChars(buffer,length);
+                }
+              }
+              catch(Exception ex)
+              {  //some kind of exception error; log it
+                Log.e(LOG_TAG, "Exception in bluetoothWriteRecObj.handleMessage()", ex);
               }
             }
           };
@@ -325,35 +341,29 @@ public class MainActivity extends Activity
             @Override
             public void handleMessage(Message msgObj)
             {
-              switch(msgObj.what)
+              try
               {
-                case ProgramResources.TERMINAL_STATE_STARTED:   //terminal started
-                  if(vidReceiverManagerObj != null)
-                  {
-                    vidReceiverManagerObj.pauseReceiverUpdateWorker();    //pause update worker
-                    vidReceiverManagerObj.outputReceiverEchoCommand(true);     //send echo-on
-                    terminalIsActiveFlag = true;                     //set indicator flag
-                    vidReceiverManagerObj.outputQueryVersionCmd();   //show version info in terminal
-                  }
-                  else
-                    terminalIsActiveFlag = true;                     //set indicator flag
-                  break;
-                case ProgramResources.TERMINAL_STATE_STOPPED:   //terminal stopped
-                  terminalIsActiveFlag = false;            //clear indicator flag
-                  if(bluetoothSerServiceState == BluetoothSerialService.STATE_CONNECTED)
-                  {  //connection is active
+                switch(msgObj.what)
+                {
+                  case ProgramResources.TERMINAL_STATE_STARTED:   //terminal started
                     if(vidReceiverManagerObj != null)
                     {
-                      vidReceiverManagerObj.outputReceiverEchoCommand(false);  //send echo-off
-                                  //get/save min-RSSI-for-scans value from receiver
-                                  // (in case it was altered via command in terminal mode):
-                      vidReceiverManagerObj.fetchMinRssiValFromReceiver();
-                      vidReceiverManagerObj.resumeReceiverUpdateWorker();   //resume update worker
+                      vidReceiverManagerObj.pauseReceiverUpdateWorker();    //pause update worker
+                      vidReceiverManagerObj.outputReceiverEchoCommand(true);     //send echo-on
+                      terminalIsActiveFlag = true;                     //set indicator flag
+                      vidReceiverManagerObj.outputQueryVersionCmd();   //show version info in terminal
                     }
-                  }
-                  else  //connection not active
-                    stopReceiverOperations();    //stop vid-manager and show ConnectFragment
-                  break;
+                    else
+                      terminalIsActiveFlag = true;                     //set indicator flag
+                    break;
+                  case ProgramResources.TERMINAL_STATE_STOPPED:   //terminal stopped
+                    terminalIsActiveFlag = false;            //clear indicator flag
+                    break;
+                }
+              }
+              catch(Exception ex)
+              {  //some kind of exception error; log it
+                Log.e(LOG_TAG, "Exception in terminalStateHandlerObj.handleMessage()", ex);
               }
             }
           };

@@ -2,7 +2,7 @@
 <resources>
     
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.1</string>
+    <string name="app_version">0.3</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
     <string name="connect_button_name">Connect</string>
@@ -14,7 +14,6 @@
     <string name="rssitone_checkbox_name">RSSI audio tone</string>
     <string name="channel_button_name">Channel</string>
     <string name="freq_button_name">Frequency</string>
-    <string name="autotune_button_name">Auto Tune</string>
     <string name="nextchan_button_name">Next Chan</string>
     <string name="prevchan_button_name">Prev Chan</string>
     <string name="nextband_button_name">Next Band</string>
@@ -33,6 +32,12 @@
     <string name="rescan_button_name">Rescan</string>
     <string name="chanscan_button_name">Chan Scan</string>
     <string name="fullscan_button_name">Full Scan</string>
+    <string name="graphscan_button_name">Graph Scan</string>
+    <string name="autotune_button_name">Auto Tune</string>
+    <string name="closegraph_button_name">Close</string>
+    <string name="valuesgraph_button_name">Values</string>
+    <string name="pausegraph_button_name">Pause</string>
+    <string name="resumegraph_button_name">Resume</string>
 
     <string name="tab_tune_name">Tune</string>
     <string name="tab_fine_name">Fine</string>

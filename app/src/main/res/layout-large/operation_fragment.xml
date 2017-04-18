@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Fragment for post-connect buttons and actions (large display, portrait). -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:keepScreenOn="true">
+    <TextView
+        android:id="@+id/versionTextView"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:textSize="16sp"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="15sp" />
+    <TextView
+        android:id="@+id/freqCodeTextView"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:textSize="22sp"
+        android:layout_below="@id/versionTextView"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="15sp"
+        android:layout_marginBottom="10sp" />
+    <TextView
+        android:id="@+id/rssiLabelTextView"
+        android:text="@string/rssi_label_text"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:textSize="16sp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@id/freqCodeTextView"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="15sp" />
+    <TextView
+        android:id="@+id/rssiValueTextView"
+        android:layout_height="wrap_content"
+        android:layout_width="30sp"
+        android:textSize="16sp"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/freqCodeTextView"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="10sp"
+        android:layout_marginRight="10sp" />
+    <ProgressBar
+        android:id="@+id/rssiProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/freqCodeTextView"
+        android:layout_toRightOf="@id/rssiLabelTextView"
+        android:layout_toLeftOf="@id/rssiValueTextView"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="10sp" />
+    <CheckBox
+        android:id="@+id/rssiToneCheckBox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/rssitone_checkbox_name"
+        android:layout_below="@id/rssiProgressBar"
+        android:layout_marginTop="5sp"
+        android:layout_marginLeft="10sp"
+        android:layout_marginBottom="1sp" />
+
+    <org.apmem.tools.layouts.FlowLayout
+        android:id="@+id/buttonTablesView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rssiToneCheckBox">
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10sp"
+            android:layout_marginLeft="20sp"
+            android:color="#000000">
+            <TableLayout
+                    android:id="@+id/tabTune"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10sp"
+                    android:background="@drawable/rectangle">
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginTop="10sp">
+                    <Button
+                        android:id="@+id/channelButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/channel_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/nextBandButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/nextband_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/nextChanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/nextchan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginBottom="5sp">
+                    <Button
+                        android:id="@+id/freqButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/freq_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/prevBandButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prevband_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/prevChanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/prevchan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+            </TableLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#000000"
+                android:layout_marginLeft="75sp"
+                android:text="@string/tab_tune_name"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:textColor="#ffffff" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10sp"
+            android:layout_marginLeft="20sp"
+            android:color="#000000">
+            <TableLayout
+                    android:id="@+id/tabScan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10sp"
+                    android:background="@drawable/rectangle">
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginTop="10sp">
+                    <Button
+                        android:id="@+id/chanScanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/chanscan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/fullScanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fullscan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/scanMinRssiButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/minrssi_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginBottom="5sp">
+                    <Button
+                        android:id="@+id/autoTuneButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/autotune_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/graphScanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/graphscan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+            </TableLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#000000"
+                android:layout_marginLeft="75sp"
+                android:text="@string/tab_scan_name"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:textColor="#ffffff" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10sp"
+            android:layout_marginLeft="20sp"
+            android:color="#000000">
+            <TableLayout
+                    android:id="@+id/tabMonitor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10sp"
+                    android:background="@drawable/rectangle">
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginTop="10sp">
+                    <Button
+                        android:id="@+id/monNextChButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mnextch_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/monitorButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/monitor_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/intervalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/interval_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginBottom="5sp">
+                    <Button
+                        android:id="@+id/monPrevChButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/mprevch_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/monMinRssiButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/minrssi_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/monRescanButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rescan_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+            </TableLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#000000"
+                android:layout_marginLeft="75sp"
+                android:text="@string/tab_monitor_name"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:textColor="#ffffff" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10sp"
+            android:layout_marginLeft="20sp"
+            android:color="#000000">
+            <TableLayout
+                    android:id="@+id/tabFine"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10sp"
+                    android:background="@drawable/rectangle">
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginTop="10sp">
+                    <Button
+                        android:id="@+id/upOneMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/upone_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/upTenMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/upten_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/upHunMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/uphun_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+                <TableRow android:layout_marginLeft="8sp"
+                          android:layout_marginRight="8sp"
+                          android:layout_marginBottom="5sp">
+                    <Button
+                        android:id="@+id/downOneMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/downone_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/downTenMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/downten_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                    <Button
+                        android:id="@+id/downHunMhzButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/downhun_button_name"
+                        android:minWidth="115dp"
+                        android:layout_margin="1sp" />
+                </TableRow>
+            </TableLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="#000000"
+                android:layout_marginLeft="75sp"
+                android:text="@string/tab_fine_name"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:textColor="#ffffff" />
+        </FrameLayout>
+
+    </org.apmem.tools.layouts.FlowLayout>
+
+    <Button
+        android:id="@+id/terminalButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/term_button_name"
+        android:layout_below="@id/buttonTablesView"
+        android:minWidth="120dp"
+        android:layout_marginTop="15sp"
+        android:layout_marginLeft="15sp" />
+    <Button
+        android:id="@+id/disconnectButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/disconnect_button_name"
+        android:layout_below="@id/terminalButton"
+        android:minWidth="120dp"
+        android:layout_marginTop="10sp"
+        android:layout_marginLeft="15sp" />
+</RelativeLayout>

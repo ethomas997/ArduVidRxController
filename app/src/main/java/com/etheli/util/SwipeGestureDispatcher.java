@@ -1,7 +1,7 @@
 //SwipeGestureDispatcher.java:  Monitors 'touch' events and dispatches those
 //                              detected as 'swipe' events to a listener.
 //
-//  2/23/207 -- [ET]
+//  3/31/2017 -- [ET]
 //
 
 package com.etheli.util;
@@ -32,6 +32,13 @@ public class SwipeGestureDispatcher implements View.OnTouchListener
      * swipe went right to left.
      */
     public void onSwipeGesture(boolean rightFlag);
+
+    /**
+     * Determines if the target widget is visible (and should received
+     * 'swipe' events via this dispatcher).
+     * @return true if visible.
+     */
+    public boolean isVisible();
   }
 
   /**
@@ -94,8 +101,8 @@ public class SwipeGestureDispatcher implements View.OnTouchListener
     @Override
     public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY)
     {
-      if(swipeGestureEventIntfObj != null)
-      {  //callback object is set
+      if(swipeGestureEventIntfObj != null && swipeGestureEventIntfObj.isVisible())
+      {  //callback object is set and target widget is visible
         if(Math.abs(e1.getY() - e2.getY()) > SWIPE_MAX_OFF_PATH)
           return false;      //if gesture has too much vertical then ignore
         if(e1.getX() - e2.getX() > SWIPE_MIN_DISTANCE &&

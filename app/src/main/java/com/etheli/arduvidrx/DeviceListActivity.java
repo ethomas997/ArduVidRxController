@@ -54,7 +54,7 @@ public class DeviceListActivity extends Activity {
     public static String EXTRA_DEVICE_ADDRESS = "device_address";
 
     // Member fields
-    private BluetoothAdapter mBtAdapter;
+    private BluetoothAdapter mBtAdapter = null;
     private ArrayAdapter<String> mPairedDevicesArrayAdapter;
     private ArrayAdapter<String> mNewDevicesArrayAdapter;
 
@@ -103,6 +103,9 @@ public class DeviceListActivity extends Activity {
 
         // Get the local Bluetooth adapter
         mBtAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBtAdapter == null) {
+            return;
+        }
 
         // Get a set of currently paired devices
         Set<BluetoothDevice> pairedDevices = mBtAdapter.getBondedDevices();
@@ -138,6 +141,9 @@ public class DeviceListActivity extends Activity {
     private void doDiscovery() {
         if (D) Log.d(TAG, "doDiscovery()");
 
+        if (mBtAdapter == null) {
+            return;
+        }
         // Indicate scanning in the title
         setProgressBarIndeterminateVisibility(true);
         setTitle(R.string.scanning);
@@ -162,8 +168,10 @@ public class DeviceListActivity extends Activity {
 
         	
             // Cancel discovery because it's costly and we're about to connect
-            mBtAdapter.cancelDiscovery();
-        	
+            if (mBtAdapter != null) {
+                mBtAdapter.cancelDiscovery();
+            }
+
             String info = ((TextView) v).getText().toString();
             
             if ( (info != noDevicesPaired)  &&  (info != noDevicesFound) ){

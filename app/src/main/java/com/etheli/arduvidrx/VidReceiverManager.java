@@ -1,6 +1,6 @@
 //VidReceiverManager.java:  Manages command I/O for an ArduVidRx unit.
 //
-//   3/6/2017 -- [ET]
+//   4/7/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -15,6 +15,9 @@ import java.util.Vector;
 
 /**
  * Class VidReceiverManager manages command I/O for an ArduVidRx unit.
+ * The I/O and processing of receiver commands is decoupled from the
+ * command methods (i.e., 'tuneReceiverToChannelCode()') via message
+ * handlers (so the calling thread will not be blocked or delayed).
  */
 public class VidReceiverManager
 {
@@ -50,6 +53,7 @@ public class VidReceiverManager
   public static final byte [] VIDRX_MONITOR_CMD = ("M"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_CHANSCAN_CMD = ("S"+VIDRX_CR_STR).getBytes();
   public static final byte [] VIDRX_FULLSCAN_CMD = ("F"+VIDRX_CR_STR).getBytes();
+  public static final byte [] VIDRX_BANDSCAN_CMD = ("XF"+VIDRX_CR_STR).getBytes();
   public static final String VIDRX_TUNE_PRESTR = "T";
   public static final String VIDRX_MINRSSI_PRESTR = "XM";
   public static final String VIDRX_MONINTVL_PRESTR = "XI";
@@ -146,7 +150,7 @@ public class VidReceiverManager
       try { Thread.sleep(250); }            //start with delay in case receiver
       catch(InterruptedException ex) {}     // needs some setup time
 
-      if(bluetoothSerialServiceObj.getState() != BluetoothSerialService.STATE_CONNECTED)
+      if(!isReceiverSerialConnected())
       {  //not connected (test mode)
         final String msgStr = parentActivityObj.getString(R.string.testmode_message);
         if(mainGuiUpdateHandlerObj != null)
@@ -200,15 +204,11 @@ public class VidReceiverManager
         }
       }
 
-      fetchMinRssiValFromReceiver();        //get/save min-RSSI-for-scans value from receiver
-
-      try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
-      catch(InterruptedException ex) {}     //do one interval delay before starting worker
       if(receiverUpdateWorkerObj != null)        //if previous worker then
         receiverUpdateWorkerObj.terminate();     //stop it
-      Log.d(LOG_TAG, "Starting receiver-update worker");
       receiverUpdateWorkerObj = new ReceiverUpdateWorker();
-      receiverUpdateWorkerObj.start();           //start update worker
+      doReceiverUpdateWorkerStartup();
+
       if(commandHandlerThreadObj.wasStartedFlag)                //if was previously run then
         commandHandlerThreadObj = new CommandHandlerThread();   //create new thread object
       commandHandlerThreadObj.start();           //start command handler
@@ -226,6 +226,56 @@ public class VidReceiverManager
   }
 
   /**
+   * Starts (or resumes) the receiver update worker.  Settings values are
+   * fetched from the receiver before the startup.
+   */
+  private void doReceiverUpdateWorkerStartup()
+  {
+    try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
+    catch(InterruptedException ex) {}       //do one interval delay sending commands
+    if(outputReceiverEchoCommand(false) == null)      //send echo-off command
+    {  //no response after command (can happen while waiting for TERMINAL_STATE_STOPPED msg)
+      for(int c=0; c<20; ++c)
+      {  //delay and retry command
+        try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
+        catch(InterruptedException ex) {}
+        if(outputReceiverEchoCommand(false) != null)
+          break;        //response received OK; move on
+      }
+    }
+    fetchMinRssiValFromReceiver();          //get/save min-RSSI-for-scans value from receiver
+    fetchMonIntvlValFromReceiver();         //get/save monitor-interval value from receiver
+    try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
+    catch(InterruptedException ex) {}       //do one interval delay before starting worker
+    if(!receiverUpdateWorkerObj.isAlive())
+    {  //worker thread not running
+      Log.d(LOG_TAG, "Starting receiver-update worker");
+      receiverUpdateWorkerObj.start();           //start update worker
+    }
+    else
+    {  //worker thread is running (paused)
+      Log.d(LOG_TAG, "Resuming receiver-update worker");
+      receiverUpdateWorkerObj.resumeThread();    //resume update worker
+    }
+  }
+
+  /**
+   * Starts up the receiver update worker (via a thread separate from the
+   * caller's thread).  Settings values are fetched from the receiver
+   * before the startup.
+   */
+  public void startupReceiverUpdateWorker()
+  {
+    (new Thread("vidUpdWorkerStartup")
+        {
+          public void run()
+          {
+            doReceiverUpdateWorkerStartup();
+          }
+        }).start();
+  }
+
+  /**
    * Stops the video-receiver-manager threads.
    */
   public void stopManager()
@@ -235,7 +285,7 @@ public class VidReceiverManager
       commandHandlerThreadObj.sendMessage(VIDCMD_TERMINATE_MSGC);    //stop command handler
       if(receiverUpdateWorkerObj != null)
       {  //worker was created; stop it
-        receiverUpdateWorkerObj.terminate();
+        receiverUpdateWorkerObj.terminate(10);
         receiverUpdateWorkerObj = null;
       }
     }
@@ -351,20 +401,57 @@ public class VidReceiverManager
 
   /**
    * Pauses the receiver-update worker (so commands can be sent to the receiver).
+   * Method does not return until the pause is confirmed (or a timeout occurs).
+   * @return true if the thread was not already paused; false if the thread was
+   * already paused.
    */
-  public void pauseReceiverUpdateWorker()
+  public boolean pauseReceiverUpdateWorker()
   {
-    if(receiverUpdateWorkerObj != null)
-      receiverUpdateWorkerObj.pauseThread(1000);
+    return pauseReceiverUpdateWorker(false);
+  }
+
+  /**
+   * Pauses the receiver-update worker (so commands can be sent to the receiver).
+   * @param retImmedFlag true to return immediately; false to wait until the
+   * pause is confirmed (or a timeout occurs).
+   * @return true if the thread was not already paused; false if the thread was
+   * already paused.
+   */
+  public boolean pauseReceiverUpdateWorker(boolean retImmedFlag)
+  {
+    if(receiverUpdateWorkerObj != null && !receiverUpdateWorkerObj.isThreadPaused())
+    {
+      receiverUpdateWorkerObj.pauseThread(retImmedFlag ? 0 : 1000);
+      return true;
+    }
+    return false;
   }
 
   /**
    * Resumes the receiver-update worker.
    */
-  public void resumeReceiverUpdateWorker()
+  private void resumeReceiverUpdateWorker()
   {
     if(receiverUpdateWorkerObj != null)
       receiverUpdateWorkerObj.resumeThread();
+  }
+
+  /**
+   * Determines if the receiver-update worker thread is paused.
+   * @return true if the receiver-update worker thread is paused; false if not.
+   */
+  public boolean isReceiverUpdateWorkerPaused()
+  {
+    return (receiverUpdateWorkerObj != null) ? receiverUpdateWorkerObj.isThreadPaused() : false;
+  }
+
+  /**
+   * Determines if the receiver serial service is connected.
+   * @return true if the receiver serial service is connected; false if not.
+   */
+  public boolean isReceiverSerialConnected()
+  {
+    return (bluetoothSerialServiceObj.getState() == BluetoothSerialService.STATE_CONNECTED);
   }
 
   /**
@@ -448,7 +535,7 @@ public class VidReceiverManager
    */
   protected String sendCommandNoResponse(byte [] cmdBuff)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     final String retStr = outputCmdNoResponse(cmdBuff);
     resumeReceiverUpdateWorker();
     return retStr;
@@ -462,9 +549,10 @@ public class VidReceiverManager
    */
   protected String sendCommandNoResponse(String cmdStr)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     final String retStr = outputCmdNoResponse(cmdStr.getBytes());
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
     return retStr;
   }
 
@@ -476,9 +564,10 @@ public class VidReceiverManager
    */
   protected String sendCommandRecvResponse(byte [] cmdBuff)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     final String retStr = outputCmdRecvResponse(cmdBuff);
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
     return retStr;
   }
 
@@ -490,9 +579,10 @@ public class VidReceiverManager
    */
   protected String sendCommandRecvResponse(String cmdStr)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     final String retStr = outputCmdRecvResponse(cmdStr.getBytes());
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
     return retStr;
   }
 
@@ -501,12 +591,13 @@ public class VidReceiverManager
    */
   private void doAutoTuneReceiver()
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     if(outputCmdNoResponse(VIDRX_AUTOTUNE_CMD) != null)    //send 'A' command
     {  //initial newline response received OK
       processReceiverScanning();                 //wait for scanning to finish
     }
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
   }
 
   /**
@@ -516,13 +607,14 @@ public class VidReceiverManager
    */
   public void doSendNextPrevMonToReceiver(byte [] cmdBuff)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     if(outputCmdNoResponse(cmdBuff) != null)     //send 'N', 'P' or 'M' command
     {  //initial newline response received OK
       if(peekFirstReceivedChar() == ' ')         //if receiver is scanning then
         processReceiverScanning();               //wait for scanning to finish
     }
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
   }
 
   /**
@@ -535,7 +627,7 @@ public class VidReceiverManager
    */
   public String doSendScanCommandToReceiver(byte [] cmdBuff)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     String retStr = null;
     if(outputCmdNoResponse(cmdBuff) != null)     //send 'S' or 'F' command:
     {  //initial newline response received OK
@@ -544,7 +636,8 @@ public class VidReceiverManager
       retStr = getNextReceivedLine(RESP_WAIT_TIMEMS);      //get scan-data results
 //      Log.d(LOG_TAG, "doSendScanCommandToReceiver received:  " + retStr);
     }
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
     return retStr;
   }
 
@@ -589,12 +682,13 @@ public class VidReceiverManager
    */
   private void doSendMinRssiValToReceiver(int minRssiVal)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     outputCmdNoResponse((VIDRX_MINRSSI_PRESTR + minRssiVal + VIDRX_CR_STR).getBytes());
     fetchMinRssiValFromReceiver();                    //fetch value from receiver
     if(getMinRssiForScansValue() != minRssiVal)       //check value
       Log.e(LOG_TAG, "Mismatch confirming min-RSSI value sent to receiver");
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
   }
 
   /**
@@ -603,12 +697,13 @@ public class VidReceiverManager
    */
   private void doSendMonIntvlValToReceiver(int intervalVal)
   {
-    pauseReceiverUpdateWorker();
+    final boolean resFlag = pauseReceiverUpdateWorker();
     outputCmdNoResponse((VIDRX_MONINTVL_PRESTR + intervalVal + VIDRX_CR_STR).getBytes());
     fetchMonIntvlValFromReceiver();                   //fetch value from receiver
     if(getMonitorIntervalValue() != intervalVal)      //check value
       Log.e(LOG_TAG, "Mismatch confirming monitor-interval value sent to receiver");
-    resumeReceiverUpdateWorker();
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
   }
 
   /**
@@ -622,6 +717,18 @@ public class VidReceiverManager
   }
 
   /**
+   * Sends the tune-channel/frequency command to the receiver.  This method
+   * should only be used while the receiver worker is stopped or paused.
+   * @param chanStr channel code or frequency value string.
+   * @return Received "echo" characters (if any), or null if timeout reached
+   * before receiving an end-of-line character.
+   */
+  public String outputTuneChannelCommand(String chanStr)
+  {
+    return outputCmdNoResponse((VIDRX_TUNE_PRESTR + chanStr + VIDRX_CR_STR).getBytes());
+  }
+
+  /**
    * Sends the echo-on or echo-off command to the receiver.  This method
    * should only be used while the receiver worker is stopped or paused.
    * @param onFlag true for echo on; false for echo off.
@@ -630,12 +737,23 @@ public class VidReceiverManager
    */
   public String outputReceiverEchoCommand(boolean onFlag)
   {
-    return outputCmdNoResponse(onFlag ? VIDRX_ECHOON_CMD :VIDRX_ECHOOFF_CMD);
+    return outputCmdNoResponse(onFlag ? VIDRX_ECHOON_CMD : VIDRX_ECHOOFF_CMD);
+  }
+
+  /**
+   * Sends the full-band-scan command ("XF") to the receiver.  This method
+   * should only be used while the receiver worker is stopped or paused.
+   * @return Received "echo" characters (if any), or null if timeout reached
+   * before receiving an end-of-line character.
+   */
+  public String outputFullBandScanCommand()
+  {
+    return outputCmdNoResponse(VIDRX_BANDSCAN_CMD);
   }
 
   /**
    * Sends the command to query the program-version information from receiver
-   * (but does not receive the response.
+   * (but does not receive the response).
    * This method should only be used while the receiver worker is stopped
    * or paused.
    * @return Received "echo" characters (if any), or null if timeout reached
@@ -687,7 +805,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error monitor-interval value from receiver", ex);
+      Log.e(LOG_TAG, "Error fetching monitor-interval value from receiver", ex);
     }
   }
 
@@ -698,6 +816,44 @@ public class VidReceiverManager
   public int getMonitorIntervalValue()
   {
     return monitorIntervalValue;
+  }
+
+  /**
+   * Transmits a carriage-return character to the receiver.  (Does not
+   * attempt to receive any "echo" characters.)
+   */
+  public void transmitCarriageReturn()
+  {
+    try
+    {
+      bluetoothSerialServiceObj.write(VIDRX_CR_ARR);
+    }
+    catch(Exception ex)
+    {
+      Log.e(LOG_TAG, "Error sending CR to receiver", ex);
+    }
+  }
+
+  /**
+   * Sets the receiver to the channel held in the ChannelTracker object.
+   * This method can be used to restore the tuned channel after a scan.
+   * This method should only be used while the receiver worker is stopped
+   * or paused.
+   * @return Received "echo" characters (if any), or null if timeout reached
+   * before receiving an end-of-line character (or if ChannelTracker not set).
+   */
+  public String setReceiverViaChannelTracker()
+  {
+    if(vidChannelTrackerObj != null)
+    {  //ChannelTracker has been setup
+      final String str;      //if channel code available then tune to it
+      if((str=vidChannelTrackerObj.getCurChannelCode()) != null)
+        return outputTuneChannelCommand(str);
+      final int freqVal;     //if frequency value valid then tune to it
+      if((freqVal=vidChannelTrackerObj.getCurFrequencyInMHz()) > 0)
+        return outputTuneChannelCommand(Integer.toString(freqVal));
+    }
+    return null;
   }
 
   /**
@@ -844,7 +1000,7 @@ public class VidReceiverManager
    * @param timeoutMs maximum number of milliseconds to wait.
    * @return A string containing the next received line, or null if timeout.
    */
-  private String getNextReceivedLine(int timeoutMs)
+  public String getNextReceivedLine(int timeoutMs)
   {
     synchronized(receivedLinesList)
     {  //grab thread lock for list
@@ -860,8 +1016,11 @@ public class VidReceiverManager
       catch(InterruptedException ex)
       {
       }
-      if(receivedLinesList.size() <= 0)     //if line not received then
+      if(receivedLinesList.size() <= 0)
+      {  //line not received before timeout
+        Log.d(LOG_TAG, "getNextReceivedLine() returning null (timeout)");
         return null;                        //indicate no data
+      }
               //fetch and return received line:
       final String str = receivedLinesList.remove(0);      //remove line from list
       return str;
@@ -935,7 +1094,7 @@ public class VidReceiverManager
           if((q=respStr.indexOf(' ',p+1)) > 0)
           {  //trailing space found
             if(respStr.indexOf('M',q) == q+1)
-            {  //'M' found after space then
+            {  //'M' found after space
               dispStr = MONITOR_STRING;          //setup to display 'monitor' indicator
               monitorModeActiveFlag = true;      //indicate 'monitor' mode active
             }
@@ -967,7 +1126,7 @@ public class VidReceiverManager
 
 
   /**
-   * Class ReceiverUpdateWorker defines a background-worker thread for
+   * Class ReceiverScanDataWorker defines a background-worker thread for
    * reading data from the receiver.
    */
   private class ReceiverUpdateWorker extends PausableWorker

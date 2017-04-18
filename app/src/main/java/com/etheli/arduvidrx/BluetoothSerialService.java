@@ -107,7 +107,7 @@ public class BluetoothSerialService {
         if(mBluetoothAdapter == null) {
             mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
             if (mBluetoothAdapter == null) {
-                showNoBluetoothDialog();
+//                showNoBluetoothDialog();
                 return;
             }
         }
@@ -159,11 +159,17 @@ public class BluetoothSerialService {
      * Performs select/connect action.
      */
     public void doConnectDeviceAction() {
-        if (mState == STATE_NONE) {
-            // Launch the DeviceListActivity to see devices and do scan
-            final Intent intentObj = new Intent(mParentActivityObj, DeviceListActivity.class);
-            mParentActivityObj.startActivityForResult(intentObj,
-                                                 BluetoothSerialService.REQUEST_CONNECT_DEVICE);
+        if (mBluetoothAdapter != null) {
+            if (mState == STATE_NONE) {
+                // Launch the DeviceListActivity to see devices and do scan
+                final Intent intentObj = new Intent(mParentActivityObj, DeviceListActivity.class);
+                mParentActivityObj.startActivityForResult(intentObj,
+                                                   BluetoothSerialService.REQUEST_CONNECT_DEVICE);
+            }
+        }
+        else {
+            showNoBluetoothDialog();
+            setState(STATE_NONE);
         }
     }
 
@@ -203,6 +209,10 @@ public class BluetoothSerialService {
             BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(devAddrStr);
             // Attempt to connect to the device
             connect(device);
+        }
+        else {
+            showNoBluetoothDialog();
+            setState(STATE_NONE);
         }
     }
 

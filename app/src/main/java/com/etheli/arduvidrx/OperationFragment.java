@@ -1,12 +1,15 @@
 //OperationFragment.java:  Defines the main operations screen and functions.
 //
-//   3/9/2017 -- [ET]
+//  4/16/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
 
 import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -33,10 +36,9 @@ import es.pymasde.blueterm.BlueTerm;
 public class OperationFragment extends Fragment
                                      implements SwipeGestureDispatcher.SwipeGestureEventInterface
 {
-    /** Tag string for logging. */
-  public static final String LOG_TAG = "OperationFragment";
   private final ProgramResources programResourcesObj = ProgramResources.getProgramResourcesObj();
   private final MainGuiUpdateHandler mainGuiUpdateHandlerObj = new MainGuiUpdateHandler();
+  private View operationFragmentViewObj = null;
   private TextView versionTextViewObj = null;
   private TextView freqCodeTextViewObj = null;
   private ProgressBar rssiProgressBarObj = null;
@@ -48,6 +50,8 @@ public class OperationFragment extends Fragment
   private boolean rssiToneEnabledFlag = false;
   private final ContinuousBuzzer rssiContinuousBuzzerObj = new ContinuousBuzzer();
   private final Averager rssiToneAveragerObj = new Averager(5);
+    /** Tag string for logging. */
+  public static final String LOG_TAG = "OperationFragment";
 
 
   /**
@@ -63,67 +67,110 @@ public class OperationFragment extends Fragment
   @Override
   public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                                              Bundle savedInstanceState)
-  {                                    //inflate fragment view from XML:
-    final View viewObj = inflater.inflate(R.layout.operation_fragment,container,false);
-    GuiUtils.setViewButtonsClickListener(viewObj,
-          new View.OnClickListener()
-            {
-              @Override
-              public void onClick(View vObj)
+  {
+    System.out.println("DEBUG OperationFragment entered onCreateView()");
+
+    if(videoChannelTrackerObj == null)
+    {  //this is the first time through
+              //setup resources and channel tracker:
+      videoFrequencyTableObj = programResourcesObj.getFrequencyTableObj();
+      videoChannelTrackerObj = new ChannelTracker(videoFrequencyTableObj);
+      vidReceiverManagerObj = programResourcesObj.getVidReceiverManagerObj();
+      if(vidReceiverManagerObj != null)
+      {  //video-receiver-manager object is OK
+              //setup so video-receiver-manager can update channel tracker:
+        vidReceiverManagerObj.setChannelTrackerObj(videoChannelTrackerObj);
+              //setup so video-receiver-manager can update GUI widgets:
+        vidReceiverManagerObj.setGuiUpdateHandlerObj(mainGuiUpdateHandlerObj);
+      }
+    }
+    if(operationFragmentViewObj == null)
+    {  //view object not yet created
+              //inflate fragment view from XML:
+      operationFragmentViewObj = inflater.inflate(R.layout.operation_fragment,container,false);
+              //setup shared listener method for all buttons:
+      GuiUtils.setViewButtonsClickListener(operationFragmentViewObj,
+            new View.OnClickListener()
               {
-                processButtonClick(vObj);
-              }
-            });
-         //setup resources and channel tracker:
-    vidReceiverManagerObj = programResourcesObj.getVidReceiverManagerObj();
-    videoFrequencyTableObj = programResourcesObj.getFrequencyTableObj();
-    videoChannelTrackerObj = new ChannelTracker(videoFrequencyTableObj);
-         //setup so video-receiver-manager can update channel tracker:
-    vidReceiverManagerObj.setChannelTrackerObj(videoChannelTrackerObj);
-         //setup so video-receiver-manager can update GUI widgets:
-    vidReceiverManagerObj.setGuiUpdateHandlerObj(mainGuiUpdateHandlerObj);
-    return viewObj;
+                @Override
+                public void onClick(View vObj)
+                {
+                  processButtonClick(vObj);
+                }
+              });
+    }
+    return operationFragmentViewObj;
   }
 
   /**
-   * Called when the fragment's activity has been created and this
-   * fragment's view hierarchy instantiated.
+   * Called when the fragment is no longer in use.
    */
   @Override
-  public void onActivityCreated(Bundle savedInstanceState)
+  public void onDestroy()
   {
-    super.onActivityCreated(savedInstanceState);
+    if(vidReceiverManagerObj != null)
+    {  //video-receiver-manager object OK
+                //clear channel tracker for video-receiver-manager:
+      vidReceiverManagerObj.setChannelTrackerObj(null);
+                //clear update handler for video-receiver-manager:
+      vidReceiverManagerObj.setGuiUpdateHandlerObj(null);
+    }
+    super.onDestroy();
+  }
+
+  /**
+   * Called when the fragment has been started and is visible to the user.
+   */
+  @Override
+  public void onStart()
+  {
+    System.out.println("DEBUG OperationFragment entered onStart()");
+
+    super.onStart();
+    if(versionTextViewObj == null)
+    {  //this is the first time through
          //setup access to display widgets (in 'onCreateView()' is too early):
-    versionTextViewObj = (TextView)getActivity().findViewById(R.id.versionTextView);
-    freqCodeTextViewObj = (TextView)getActivity().findViewById(R.id.freqCodeTextView);
-    rssiProgressBarObj = (ProgressBar)getActivity().findViewById(R.id.rssiProgressBar);
-    rssiValueTextViewObj = (TextView)getActivity().findViewById(R.id.rssiValueTextView);
+      versionTextViewObj = (TextView)getActivity().findViewById(R.id.versionTextView);
+      freqCodeTextViewObj = (TextView)getActivity().findViewById(R.id.freqCodeTextView);
+      rssiProgressBarObj = (ProgressBar)getActivity().findViewById(R.id.rssiProgressBar);
+      rssiValueTextViewObj = (TextView)getActivity().findViewById(R.id.rssiValueTextView);
          //setup "delta" period for RSSI-audio-tone generator:
-    rssiContinuousBuzzerObj.setPausePeriodSeconds(0.1);
-    rssiContinuousBuzzerObj.setVolume(25);       //reduce volume
+      rssiContinuousBuzzerObj.setPausePeriodSeconds(0.1);
+      rssiContinuousBuzzerObj.setVolume(25);       //reduce volume
          //create and setup tab host:
-    operationFragTabHostObj = (TabHost)getActivity().findViewById(R.id.tabHost);
-    operationFragTabHostObj.setup();
-         //"Tune" Tab:
-    TabHost.TabSpec specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_tune_name));
-    specObj.setContent(R.id.tabTune);
-    specObj.setIndicator(specObj.getTag());
-    operationFragTabHostObj.addTab(specObj);
-         //"Fine" Tab:
-    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_fine_name));
-    specObj.setContent(R.id.tabFine);
-    specObj.setIndicator(specObj.getTag());
-    operationFragTabHostObj.addTab(specObj);
-         //"Monitor" Tab:
-    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_monitor_name));
-    specObj.setContent(R.id.tabMonitor);
-    specObj.setIndicator(specObj.getTag());
-    operationFragTabHostObj.addTab(specObj);
-         //"Scan" Tab:
-    specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_scan_name));
-    specObj.setContent(R.id.tabScan);
-    specObj.setIndicator(specObj.getTag());
-    operationFragTabHostObj.addTab(specObj);
+      operationFragTabHostObj = (TabHost)getActivity().findViewById(R.id.tabHost);
+      if(operationFragTabHostObj != null)
+      {  //layout uses tabs
+        operationFragTabHostObj.setup();
+              //"Tune" Tab:
+        TabHost.TabSpec specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_tune_name));
+        specObj.setContent(R.id.tabTune);
+        specObj.setIndicator(specObj.getTag());
+        operationFragTabHostObj.addTab(specObj);
+              //"Scan" Tab:
+        specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_scan_name));
+        specObj.setContent(R.id.tabScan);
+        specObj.setIndicator(specObj.getTag());
+        operationFragTabHostObj.addTab(specObj);
+              //"Monitor" Tab:
+        specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_monitor_name));
+        specObj.setContent(R.id.tabMonitor);
+        specObj.setIndicator(specObj.getTag());
+        operationFragTabHostObj.addTab(specObj);
+              //"Fine" Tab:
+        specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_fine_name));
+        specObj.setContent(R.id.tabFine);
+        specObj.setIndicator(specObj.getTag());
+        operationFragTabHostObj.addTab(specObj);
+      }
+              //setup utility-paint object for 'GuiUtils.getFillerStr()' method:
+      GuiUtils.setUtilPaintObj(getView());
+    }
+    if(vidReceiverManagerObj != null && vidReceiverManagerObj.isReceiverSerialConnected() &&
+                                            vidReceiverManagerObj.isReceiverUpdateWorkerPaused())
+    {  //update worker is paused; resume it
+      vidReceiverManagerObj.startupReceiverUpdateWorker();
+    }
   }
 
   /**
@@ -132,8 +179,27 @@ public class OperationFragment extends Fragment
   @Override
   public void onStop()
   {
-    super.onStop();
+    if(vidReceiverManagerObj != null)
+      vidReceiverManagerObj.pauseReceiverUpdateWorker(true);
     rssiContinuousBuzzerObj.stop();    //stop RSSI tone (if sounding)
+    super.onStop();
+  }
+
+  /**
+   * Determines if the layout in use features the 'tabHost' widget.
+   * @return true if the layout in use features the 'tabHost' widget;
+   * false if not.
+   */
+  public boolean isTabHostInUse()
+  {
+    try
+    {
+      return (getActivity().findViewById(R.id.tabHost) != null);
+    }
+    catch(Exception ex)
+    {  //some kind of error; just return true
+      return true;
+    }
   }
 
   /**
@@ -147,26 +213,29 @@ public class OperationFragment extends Fragment
   {
     try
     {
-      if(rightFlag)
-      {  //swipe right
-        final int idx;
-        if((idx=operationFragTabHostObj.getCurrentTab()) <
+      if(operationFragTabHostObj != null)
+      {
+        if(rightFlag)
+        {  //swipe right
+          final int idx;
+          if((idx=operationFragTabHostObj.getCurrentTab()) <
                      operationFragTabHostObj.getTabWidget().getTabCount()-1)
-        {  //not at last tab; select next tab
-          operationFragTabHostObj.setCurrentTab(idx+1);
+          {  //not at last tab; select next tab
+            operationFragTabHostObj.setCurrentTab(idx+1);
+          }
+          else  //at last tab; select first tab
+            operationFragTabHostObj.setCurrentTab(0);
         }
-        else  //at last tab; select first tab
-          operationFragTabHostObj.setCurrentTab(0);
-      }
-      else
-      {  //swipe left
-        final int idx;
-        if((idx=operationFragTabHostObj.getCurrentTab()) > 0)   //if not at first tab then
-          operationFragTabHostObj.setCurrentTab(idx-1);         //select previous tab
         else
-        {  //at first tab; select last tab
-          operationFragTabHostObj.setCurrentTab(
+        {  //swipe left
+          final int idx;
+          if((idx=operationFragTabHostObj.getCurrentTab()) > 0) //if not at first tab then
+            operationFragTabHostObj.setCurrentTab(idx-1);       //select previous tab
+          else
+          {  //at first tab; select last tab
+            operationFragTabHostObj.setCurrentTab(
                     operationFragTabHostObj.getTabWidget().getTabCount()-1);
+          }
         }
       }
     }
@@ -180,7 +249,7 @@ public class OperationFragment extends Fragment
    * Processes the click event for the given Button object.
    * @param vObj Button object.
    */
-  public void processButtonClick(View vObj)
+  private void processButtonClick(View vObj)
   {
     switch(vObj.getId())
     {
@@ -282,9 +351,16 @@ public class OperationFragment extends Fragment
         break;
       case R.id.chanScanButton:        //do channel-scan and select channel
         vidReceiverManagerObj.startScanSelectChanFunction(false);
-        break;
+        break;               //result handled via 'showSelChanDialogForScanStr()' method
       case R.id.fullScanButton:        //do full-scan and select channel
         vidReceiverManagerObj.startScanSelectChanFunction(true);
+        break;               //result handled via 'showSelChanDialogForScanStr()' method
+      case R.id.graphScanButton:       //show graph-scan fragment
+        final FragmentManager fragMgrObj = getFragmentManager();
+        final FragmentTransaction fragTransObj = fragMgrObj.beginTransaction();
+        fragTransObj.replace(R.id.fragment_container,new GraphScanFragment());   //swap in new fragment
+        fragTransObj.addToBackStack(null);
+        fragTransObj.commit();
         break;
     }
   }
@@ -305,7 +381,7 @@ public class OperationFragment extends Fragment
             public void itemSelected(int selIdx)
             {           //translate array index to channel and tune to it:
               final CharSequence chSeqObj;
-              if(selIdx >= 0 && selIdx < charSeqArr.length &&
+              if(vidReceiverManagerObj != null && selIdx >= 0 && selIdx < charSeqArr.length &&
                          (chSeqObj=charSeqArr[selIdx]) instanceof FrequencyTable.FreqChannelItem)
               {  //FreqChannelItem fetched from array OK
                 final FrequencyTable.FreqChannelItem itemObj =
@@ -333,7 +409,8 @@ public class OperationFragment extends Fragment
             @Override
             public void itemSelected(int val)
             {           //tune to entered frequency value (in MHz):
-              vidReceiverManagerObj.tuneReceiverToFrequency(val);
+              if(vidReceiverManagerObj != null)
+                vidReceiverManagerObj.tuneReceiverToFrequency(val);
             }
           });
   }

@@ -81,6 +81,18 @@ public class FrequencyTable
   }
 
   /**
+   * Returns the channel code associated with the given frequency value.
+   * @param frequencyVal frequency value.
+   * @return Code-value string (i.e., "F4"), or null if no match.
+   */
+  public String getChannelCodeForFreqVal(short frequencyVal)
+  {
+    final FreqChannelItem itemObj;
+    return ((itemObj=getFreqChannelItemObj(null,frequencyVal)) != null) ?
+                                              itemObj.channelCodeStr : null;
+  }
+
+  /**
    * Returns the frequency-channel-item object for the given array index.
    * @param idx channel-array-index value.
    * @return The matching frequency-channel-item object, or null if no match.
@@ -94,31 +106,35 @@ public class FrequencyTable
    * Returns a frequency-channel-items array containing items matching the
    * frequencies (and RSSI values) in the given list string.
    * @param scanStr list string of space-delimited "freq=RSSI" entries.
-   * @return A new array of FreqChannelItem objects.
+   * @return A new array of FreqChannelItem objects (empty array if no parsable data).
    */
   public FreqChannelItem[] getFChanItemsArrForScanStr(String scanStr)
   {
     final ArrayList<FreqChannelItem> itemsList = new ArrayList<FreqChannelItem>();
     try
     {
+      scanStr = scanStr.trim();                  //remove any leading spaces
       final int scanStrLen = scanStr.length();
-      int ePos, sPos = 0;
-      FreqChannelItem itemObj;
-      while(sPos < scanStrLen)
-      {  //for each "freq=RSSI" entry
-        if((ePos=scanStr.indexOf(' ',sPos+1)) < 0)
-          ePos = scanStrLen;
-        if(ePos > sPos)
-        {  //non-empty entry; parse into new 'FreqChannelItem' object
-          if((itemObj=createItemForScanEntryStr(scanStr.substring(sPos,ePos))) != null)
-            itemsList.add(itemObj);
-          else
-          {  //error parsing
-            Log.e(LOG_TAG, "Unable to parse entry in getFChanItemsArrForScanStr():  " +
+      if(scanStrLen > 2 && Character.isDigit(scanStr.charAt(0)))
+      {  //given string starts with a numeric (not an error message)
+        int ePos, sPos = 0;
+        FreqChannelItem itemObj;
+        while(sPos < scanStrLen)
+        {  //for each "freq=RSSI" entry
+          if((ePos=scanStr.indexOf(' ',sPos+1)) < 0)
+            ePos = scanStrLen;
+          if(ePos > sPos)
+          {  //non-empty entry; parse into new 'FreqChannelItem' object
+            if((itemObj=createItemForScanEntryStr(scanStr.substring(sPos,ePos))) != null)
+              itemsList.add(itemObj);
+            else
+            {  //error parsing
+              Log.e(LOG_TAG, "Unable to parse entry in getFChanItemsArrForScanStr():  " +
                                                                    scanStr.substring(sPos,ePos));
+            }
           }
+          sPos = ePos + 1;
         }
-        sPos = ePos + 1;
       }
     }
     catch(Exception ex)
@@ -183,7 +199,7 @@ public class FrequencyTable
 
 
   /**
-   * Class FreqChannelItem defines a frequency (channel) value.  Any array of
+   * Class FreqChannelItem defines a frequency (channel) value.  An array of
    * FreqChannelItem objects may be handled like an array of String objects.
    */
   public static class FreqChannelItem implements CharSequence
