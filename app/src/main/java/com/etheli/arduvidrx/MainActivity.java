@@ -1,11 +1,12 @@
 //MainActivity.java:  Defines the main activity for the ArduVidRx Controller.
 //
-//  4/16/2017 -- [ET]
+//  4/17/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
@@ -16,8 +17,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 import com.etheli.util.SwipeGestureDispatcher;
 
@@ -114,6 +119,56 @@ public class MainActivity extends Activity
     super.onDestroy();
     if(bluetoothSerialServiceObj != null)
       bluetoothSerialServiceObj.stop();
+  }
+
+  /**
+   * Initializes the contents of the Activity's options menu.
+   * @param menu Menu: The options menu in which you place your items.
+   * @return true (for the menu to be displayed).
+   */
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu)
+  {
+    MenuInflater inflater = getMenuInflater();
+    inflater.inflate(R.menu.main_option_menu, menu);
+    return true;
+  }
+
+  /**
+   * Hook called when an item in the options menu is selected.
+   * @param item MenuItem: The menu item that was selected.
+   * @return false to allow normal menu processing to proceed, true to consume it here.
+   */
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item)
+  {
+    switch(item.getItemId())
+    {
+      case R.id.menu_about:
+        showAboutDialog();
+        return true;
+    }
+    return false;
+  }
+
+  /**
+   * Displays the "About" dialog.
+   */
+  private void showAboutDialog()
+  {
+    final Dialog aboutDialog = new Dialog(this);
+    aboutDialog.setContentView(R.layout.about);
+    aboutDialog.setTitle(getString(R.string.app_name) + " " + getString(R.string.app_version));
+    final Button buttonObj = (Button) aboutDialog.findViewById(R.id.buttonDialog);
+    buttonObj.setOnClickListener(new View.OnClickListener()
+        {
+          @Override
+          public void onClick(View v)
+          {
+            aboutDialog.dismiss();
+          }
+        });
+    aboutDialog.show();
   }
 
   /**

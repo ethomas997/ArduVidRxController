@@ -19,16 +19,17 @@
             android:paddingRight="30dip"
             android:src="@drawable/pymasdeabout" >
         </ImageView>
-
+-->
         <TextView
             android:id="@+id/pymasde_es"
-            android:layout_width="fill_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingLeft="30dip"
-            android:paddingBottom="30dip"
-            android:singleLine="true"
-            android:text="@string/pymasde_es" />
--->
+            android:paddingTop="30dp"
+            android:paddingBottom="30dp"
+            android:layout_gravity="center"
+            android:textSize="16sp"
+            android:text="@string/about_text" />
+
         <Button
             android:id="@+id/buttonDialog"
             android:layout_width="fill_parent"

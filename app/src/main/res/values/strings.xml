@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    
+
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.3</string>
+    <string name="app_version">0.4</string>
+    <string name="app_ver_code">40</string>
+    <string name="about_text">http://www.etheli.com/ArduVidRx</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
     <string name="connect_button_name">Connect</string>
@@ -142,8 +144,6 @@
     <string name="summary_screenorientation_preference">Choose the screen orientation</string>
     <string name="dialog_title_screenorientation_preference">Screen orientation</string>
     
-    <string name="pymasde_es">http://pymasde.es/</string>
-
    <!-- Don't localize these default values -->
    <string name="default_value_localecho_preference">false</string>
    <string name="default_value_allowinsecureconnections_preference">true</string>

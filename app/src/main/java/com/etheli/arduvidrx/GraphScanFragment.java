@@ -48,7 +48,6 @@ import java.util.TreeSet;
  */
 public class GraphScanFragment extends Fragment
 {
-  private static final int MIN_PEAKLABELS_SPACING = 10;    //min space btw peak labels on graph
   private static final int MIN_PEAKLABELS_RSSI = 5;        //min RSSI for peak labels on graph
   private static final int MAX_ENTRIESLIST_SIZE = 200;     //max size for 'graphScanEntriesList'
   private static final float LABELS_TEXT_SIZE = 14.0f;     //size for graph text labels
@@ -58,6 +57,7 @@ public class GraphScanFragment extends Fragment
   private int graphScanEntriesIndex = 0;
   private int graphScanLastHighlightFreqVal = 0;
   private int graphScanLastFoundPeakFreqVal = 0;
+  private int graphScanMinPeakLabelsSpacing = 10;
   private TextView graphScanStatusTextViewObj = null;
   private Button graphScanValuesButtonObj = null;
   private Button graphScanPauseButtonObj = null;
@@ -101,7 +101,9 @@ public class GraphScanFragment extends Fragment
     if(graphScanBarChartObj == null)
     {  //this is the first time through
       graphScanBarChartObj = (BarChart)getActivity().findViewById(R.id.graphScanChart);
-      setGraphScanChartHeight();            //adjust chart height for good fit
+      setGraphScanChartHeight();                 //adjust chart height for good fit
+      addPeakLabelsSpacingLayoutListener();      //setup listener for peak-labels spacing
+      adjustMinPeakLabelsSpacing();              //do initial call to listener function
       graphScanBarChartObj.setDrawGridBackground(false);
       graphScanBarChartObj.setDrawBarShadow(false);
       graphScanBarChartObj.getLegend().setEnabled(false);
@@ -165,7 +167,7 @@ public class GraphScanFragment extends Fragment
 //      System.out.println();
 //      System.out.println("DEBUG:  entriesListSize = " + graphScanEntriesList.size());
 
-      setupBarChartEntriesListData();            //set up data objects for chart
+      setupBarChartEntriesListData();            //setup data objects for chart
       graphScanBarChartObj.invalidate();         //do initial render
       graphScanEntriesIndex = 0;                 //initialize update index
       graphScanPausedFlag = false;               //data-scan thread will be running
@@ -227,26 +229,26 @@ public class GraphScanFragment extends Fragment
     }
   }
 
-//  @Override
-//  public void onResume()
-//  {
-//    super.onResume();
-//
-//    if(graphScanBarChartObj != null)
-//    {
-//      graphScanBarChartObj.addOnLayoutChangeListener(new View.OnLayoutChangeListener()
-//          {
-//            @Override
-//            public void onLayoutChange(View view, int i, int i1, int i2, int i3, int i4, int i5, int i6, int i7)
-//            {
-//              System.out.println("DEBUG GraphScan onLayoutChange displayWidth=" +
-//                                         GuiUtils.getDisplayWidthValue(getActivity()));
-//            }
-//          });
-//
-//    }
-//
-//  }
+  /**
+   * Called when the fragment is stopped.
+   */
+  @Override
+  public void onStop()
+  {
+    if(receiverScanDataThreadObj.isAlive())
+      receiverScanDataThreadObj.pauseThread(0);       //pause data-scanning thread
+    super.onStop();
+  }
+
+  /**
+   * Called when the fragment is no longer in use.
+   */
+  @Override
+  public void onDestroy()
+  {
+    receiverScanDataThreadObj.terminate(500);    //stop data-scanning thread (wait for terminate)
+    super.onDestroy();
+  }
 
   /**
    * Sets the height of the graph-scan chart so as to fit the chart, status text view,
@@ -258,7 +260,7 @@ public class GraphScanFragment extends Fragment
     {
       final ViewGroup.LayoutParams lParamsObj = graphScanBarChartObj.getLayoutParams();
               //adjust height-scaling factor to make chart larger when screen not large:
-      final float factVal = (GuiUtils.isSmallOrNormalScreenSize(getActivity())) ? 8 : 15;
+      final float factVal = (GuiUtils.isSmallOrNormalScreenSize(getActivity())) ? 10 : 15;
               //estimate the height of the status text view and the buttons
               // and subtract that value to get the height value for the chart:
       lParamsObj.height = GuiUtils.getShorterScreenSizeValue(getActivity()) -
@@ -292,24 +294,45 @@ public class GraphScanFragment extends Fragment
   }
 
   /**
-   * Called when the fragment is stopped.
+   * Adds a layout listener to the bar chart to adjust the spacing between
+   * peak labels using the display width.  The value will change as the
+   * screen orientation changes between portrait and landscape.
    */
-  @Override
-  public void onStop()
+  private void addPeakLabelsSpacingLayoutListener()
   {
-    if(receiverScanDataThreadObj.isAlive())
-      receiverScanDataThreadObj.pauseThread(0);       //pause data-scanning thread
-    super.onStop();
+      graphScanBarChartObj.addOnLayoutChangeListener(new View.OnLayoutChangeListener()
+          {
+            @Override
+            public void onLayoutChange(View view, int i, int i1, int i2, int i3,
+                                                 int i4, int i5, int i6, int i7)
+            {
+              adjustMinPeakLabelsSpacing();
+            }
+          });
   }
 
   /**
-   * Called when the fragment is no longer in use.
+   * Adjusts the spacing between peak labels using the display width.
    */
-  @Override
-  public void onDestroy()
+  private void adjustMinPeakLabelsSpacing()
   {
-    receiverScanDataThreadObj.terminate(500);    //stop data-scanning thread (wait for terminate)
-    super.onDestroy();
+    try
+    {
+      final int dispWidth;
+      if((dispWidth=GuiUtils.getDisplayWidthValue(getActivity())) > 0)
+      {  //display-width value fetched OK
+        final int newSpacingVal;
+        if((newSpacingVal=5400/dispWidth) != graphScanMinPeakLabelsSpacing)
+        {  //spacing value is changing
+          graphScanMinPeakLabelsSpacing = newSpacingVal;
+          if(graphScanPausedFlag)           //if data-scan thread is paused then
+            doMarkPeaksAndUpdateGraph();    //find new peaks and update graph
+        }
+      }
+    }
+    catch(Exception ex)
+    {
+    }
   }
 
   /**
@@ -503,9 +526,9 @@ public class GraphScanFragment extends Fragment
           curMaxYVal = yVal;
           curMaxEntIdx = idx;
         }
-        else if(curMaxEntIdx >= 0 &&
-                 (prevMaxEntIdx < 0 || curMaxEntIdx - prevMaxEntIdx >= MIN_PEAKLABELS_SPACING) &&
-                                                    idx - curMaxEntIdx >= MIN_PEAKLABELS_SPACING)
+        else if(curMaxEntIdx >= 0 && (prevMaxEntIdx < 0 ||
+                                curMaxEntIdx - prevMaxEntIdx >= graphScanMinPeakLabelsSpacing) &&
+                                             idx - curMaxEntIdx >= graphScanMinPeakLabelsSpacing)
         {  //current peak has enough space from previous peak (if any) and scan pos; mark peak
           j = curMaxEntIdx;       //check if 3+ bars at max level
           while(j < listSize-1 &&
@@ -523,7 +546,7 @@ public class GraphScanFragment extends Fragment
         lastYVal = yVal;
       }
       if(curMaxEntIdx >= 0 &&
-                     (prevMaxEntIdx < 0 || curMaxEntIdx - prevMaxEntIdx >= MIN_PEAKLABELS_SPACING))
+            (prevMaxEntIdx < 0 || curMaxEntIdx - prevMaxEntIdx >= graphScanMinPeakLabelsSpacing))
       {  //last "current" peak has enough space from previous peak (if any); mark peak
         ((ScanItemBarEntry)graphScanEntriesList.get(curMaxEntIdx)).setShowFreqAboveBarFlag(true);
       }
@@ -532,6 +555,30 @@ public class GraphScanFragment extends Fragment
     {  //some kind of exception error; log it and move on
       Log.e(LOG_TAG, "Exception in 'markPeaksInScanEntriesList()'", ex);
     }
+  }
+
+  /**
+   * Invokes 'markPeaksInScanEntriesList()' and updates the graph, using a
+   * worker thread.
+   */
+  private void doMarkPeaksAndUpdateGraph()
+  {
+    (new Thread(new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            try
+            {
+              markPeaksInScanEntriesList();
+              graphScanBarChartObj.postInvalidate();
+            }
+            catch(Exception ex)
+            {  //some kind of exception error; log it
+              Log.e(LOG_TAG, "Exception in 'doMarkPeaksAndUpdateGraph()' worker", ex);
+            }
+          }
+        }, "doMarkPeaksAndUpdateGraph")).start();
   }
 
   /**

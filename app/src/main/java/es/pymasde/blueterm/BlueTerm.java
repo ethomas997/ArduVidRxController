@@ -145,7 +145,7 @@ public class BlueTerm extends Activity {
 
     private SharedPreferences mPrefs;
 	
-    private MenuItem mMenuItemConnect;
+//    private MenuItem mMenuItemConnect;
     private MenuItem mMenuItemStartStopRecording;
     
     private Dialog         mAboutDialog;
@@ -383,10 +383,10 @@ public class BlueTerm extends Activity {
                 if(DEBUG) Log.i(LOG_TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                 switch (msg.arg1) {
                 case BluetoothSerialService.STATE_CONNECTED:
-                	if (mMenuItemConnect != null) {
-                		mMenuItemConnect.setIcon(android.R.drawable.ic_menu_close_clear_cancel);
-                		mMenuItemConnect.setTitle(R.string.disconnect);
-                	}
+//                	if (mMenuItemConnect != null) {
+//                		mMenuItemConnect.setIcon(android.R.drawable.ic_menu_close_clear_cancel);
+//                		mMenuItemConnect.setTitle(R.string.disconnect);
+//                	}
                 	mInputManager.showSoftInput(mEmulatorView, InputMethodManager.SHOW_IMPLICIT);
                     mTitle.setText( R.string.title_connected_to );
                     mTitle.append(" " + mConnectedDeviceName);
@@ -398,10 +398,10 @@ public class BlueTerm extends Activity {
 
                 case BluetoothSerialService.STATE_LISTEN:
                 case BluetoothSerialService.STATE_NONE:
-                	if (mMenuItemConnect != null) {
-                		mMenuItemConnect.setIcon(android.R.drawable.ic_menu_search);
-                		mMenuItemConnect.setTitle(R.string.connect);
-                	}
+//                	if (mMenuItemConnect != null) {
+//                		mMenuItemConnect.setIcon(android.R.drawable.ic_menu_search);
+//                		mMenuItemConnect.setTitle(R.string.connect);
+//                	}
 
             		mInputManager.hideSoftInputFromWindow(mEmulatorView.getWindowToken(), 0);
 
@@ -554,8 +554,8 @@ public class BlueTerm extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.option_menu, menu);
-        mMenuItemConnect = menu.getItem(0);
+        inflater.inflate(R.menu.term_option_menu, menu);
+//        mMenuItemConnect = menu.getItem(0);
         mMenuItemStartStopRecording = menu.getItem(3);        
         return true;
     }
@@ -643,7 +643,7 @@ public class BlueTerm extends Activity {
 		mAboutDialog = new Dialog(BlueTerm.this);
 		mAboutDialog.setContentView(R.layout.about);
 		mAboutDialog.setTitle( getString( R.string.app_name ) + " " + getString( R.string.app_version ));
-		
+
 		Button buttonOpen = (Button) mAboutDialog.findViewById(R.id.buttonDialog);
 		buttonOpen.setOnClickListener(new OnClickListener() {
 			@Override
