@@ -7,7 +7,7 @@ has been modified to have an Arduino board).  Communication is via
 Bluetooth.  The project is developed and built using Android Studio.
 
 This project makes use of code from the
-[BlueTerm](https://github.com/johnhowe/BlueTerm) project.
+[BlueTerm](https://github.com/johnhowe/BlueTerm) and [ApmeM FlowLayout](https://github.com/ApmeM/android-flowlayout) projects.
   
   
 * * * * *
