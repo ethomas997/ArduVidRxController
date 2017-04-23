@@ -276,6 +276,7 @@ public class OperationFragment extends Fragment
           serviceObj.doDisconnectDeviceAction();
         break;
       case R.id.terminalButton:        //start 'terminal' activity
+        programResourcesObj.setTerminalStartingFlag();     //indicate starting
         final Intent intentObj = new Intent(getActivity(),BlueTerm.class);
         startActivity(intentObj);
         break;

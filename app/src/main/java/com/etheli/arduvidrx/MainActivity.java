@@ -65,15 +65,18 @@ public class MainActivity extends Activity
     loadPersistentSettings();
     setContentView(R.layout.fragment_container);      //show content frame
 
-    bluetoothSerialServiceObj = new BluetoothSerialService(
+    if((bluetoothSerialServiceObj=programResourcesObj.getBluetoothSerialServiceObj()) == null ||
+                  (vidReceiverManagerObj=programResourcesObj.getVidReceiverManagerObj()) == null)
+    {  //resources not created via previous instance; create them now
+      bluetoothSerialServiceObj = new BluetoothSerialService(
                                                   this,bluetoothHandlerObj,bluetoothWriteRecObj);
-    programResourcesObj.setBluetoothSerialServiceObj(bluetoothSerialServiceObj);
-    vidReceiverManagerObj = new VidReceiverManager(this,bluetoothSerialServiceObj);
-    programResourcesObj.setVidReceiverManagerObj(vidReceiverManagerObj);
-    programResourcesObj.setFrequencyTableObj(videoFrequencyTableObj);
+      programResourcesObj.setBluetoothSerialServiceObj(bluetoothSerialServiceObj);
+      vidReceiverManagerObj = new VidReceiverManager(this,bluetoothSerialServiceObj);
+      programResourcesObj.setVidReceiverManagerObj(vidReceiverManagerObj);
+      programResourcesObj.setFrequencyTableObj(videoFrequencyTableObj);
               //set handler for terminate-state changes:
-    programResourcesObj.setTerminalStateHandlerObj(terminalStateHandlerObj);
-
+      programResourcesObj.setTerminalStateHandlerObj(terminalStateHandlerObj);
+    }
          //show ConnectFragement:
     if((fragementContainerViewObj=findViewById(R.id.fragment_container)) != null)
     {  //able to locate 'fragment_container' OK
@@ -117,7 +120,8 @@ public class MainActivity extends Activity
   public void onDestroy()
   {
     super.onDestroy();
-    if(bluetoothSerialServiceObj != null)
+              //if service setup and terminal not running then stop service:
+    if(bluetoothSerialServiceObj != null && !programResourcesObj.isTerminalActive())
       bluetoothSerialServiceObj.stop();
   }
 

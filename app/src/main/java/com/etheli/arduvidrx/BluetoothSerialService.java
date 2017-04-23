@@ -531,7 +531,7 @@ public class BluetoothSerialService {
                     //mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
                 } catch (IOException e) {
                     if(mmCanceledFlag)
-                      Log.d(TAG, "disconnected by user");
+                      Log.d(TAG, "disconnected by user", e);
                     else
                       Log.e(TAG, "disconnected", e);
                     connectionLost(mmCanceledFlag);

@@ -47,6 +47,7 @@ public class ProgramResources
   private Handler terminalMsgHandlerObj = null;
   private DataWriteReceiver terminalWriteRecvrObj = null;
   private Handler terminalStateHandlerObj = null;
+  private boolean terminalStartingFlag = false;
 
   /**
    * Returns the ProgramResources object, creating it if needed.
@@ -121,6 +122,7 @@ public class ProgramResources
   public void setTerminalMsgHandlerObj(Handler handlerObj)
   {
     terminalMsgHandlerObj = handlerObj;
+    terminalStartingFlag = false;
   }
 
   /**
@@ -177,12 +179,23 @@ public class ProgramResources
   }
 
   /**
+   * Sets the terminal-starting flag indicating that the terminal
+   * activity is beginning.  The flag will be cleared when the
+   * 'setTerminalMsgHandlerObj()' function is called.
+   */
+  public void setTerminalStartingFlag()
+  {
+    terminalStartingFlag = true;
+  }
+
+  /**
    * Determines if the terminal window is active.
    * @return true if the terminal window is active, false if not.
    */
   public boolean isTerminalActive()
   {
-    return (terminalMsgHandlerObj != null && terminalWriteRecvrObj != null);
+    return (terminalStartingFlag ||
+                 (terminalMsgHandlerObj != null && terminalWriteRecvrObj != null));
   }
 
   /**
