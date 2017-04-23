@@ -1,6 +1,6 @@
 //OperationFragment.java:  Defines the main operations screen and functions.
 //
-//  4/16/2017 -- [ET]
+//  4/20/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -9,15 +9,16 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ProgressBar;
 import android.widget.TabHost;
@@ -47,6 +48,7 @@ public class OperationFragment extends Fragment
   private VidReceiverManager vidReceiverManagerObj = null;
   private FrequencyTable videoFrequencyTableObj = null;
   private ChannelTracker videoChannelTrackerObj = null;
+  private boolean smallScreenAdjustFlag = false;
   private boolean rssiToneEnabledFlag = false;
   private final ContinuousBuzzer rssiContinuousBuzzerObj = new ContinuousBuzzer();
   private final Averager rssiToneAveragerObj = new Averager(5);
@@ -68,8 +70,6 @@ public class OperationFragment extends Fragment
   public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                                              Bundle savedInstanceState)
   {
-    System.out.println("DEBUG OperationFragment entered onCreateView()");
-
     if(videoChannelTrackerObj == null)
     {  //this is the first time through
               //setup resources and channel tracker:
@@ -98,6 +98,23 @@ public class OperationFragment extends Fragment
                   processButtonClick(vObj);
                 }
               });
+      try
+      {
+        final int val;
+        if((val=GuiUtils.getShorterScreenSizeValue(getActivity())) <
+                                                  ProgramResources.SMALL_SCREEN_LIMIT && val > 0)
+        {  //screen is considered "small"; adjust button-text sizes for better fit
+          smallScreenAdjustFlag = true;
+          GuiUtils.scaleButtonTextSizes(operationFragmentViewObj,
+                                                            ProgramResources.BUTTON_SMSCALE_VAL);
+        }
+        else
+          smallScreenAdjustFlag = false;
+      }
+      catch(Exception ex)
+      {  //some kind of exception error; log it and move on
+        Log.e(LOG_TAG, "Exception in OpFrag 'onCreateView()' adjusting button sizes", ex);
+      }
     }
     return operationFragmentViewObj;
   }
@@ -124,8 +141,6 @@ public class OperationFragment extends Fragment
   @Override
   public void onStart()
   {
-    System.out.println("DEBUG OperationFragment entered onStart()");
-
     super.onStart();
     if(versionTextViewObj == null)
     {  //this is the first time through
@@ -153,7 +168,9 @@ public class OperationFragment extends Fragment
         specObj.setIndicator(specObj.getTag());
         operationFragTabHostObj.addTab(specObj);
               //"Monitor" Tab:
-        specObj = operationFragTabHostObj.newTabSpec(getActivity().getString(R.string.tab_monitor_name));
+        specObj = operationFragTabHostObj.newTabSpec(smallScreenAdjustFlag ?
+                                       getActivity().getString(R.string.tab_monitor_name_small) :
+                                             getActivity().getString(R.string.tab_monitor_name));
         specObj.setContent(R.id.tabMonitor);
         specObj.setIndicator(specObj.getTag());
         operationFragTabHostObj.addTab(specObj);

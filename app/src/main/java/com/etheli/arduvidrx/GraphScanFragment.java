@@ -1,6 +1,6 @@
 //GraphScanFragment.java:  Fragment for graph showing scan data.
 //
-//  4/17/2017 -- [ET]
+//  4/20/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -87,6 +87,20 @@ public class GraphScanFragment extends Fragment
     if(graphScanFragmentViewObj == null)
     {  //view object not created by previous iteration; inflate fragment view from XML
       graphScanFragmentViewObj = inflater.inflate(R.layout.graphscan_fragment,container,false);
+      try
+      {
+        final int val;
+        if((val=GuiUtils.getShorterScreenSizeValue(getActivity())) <
+                                                  ProgramResources.SMALL_SCREEN_LIMIT && val > 0)
+        {  //screen is considered "small"; adjust button-text sizes for better fit
+          GuiUtils.scaleButtonTextSizes(graphScanFragmentViewObj,
+                                                            ProgramResources.BUTTON_SMSCALE_VAL);
+        }
+      }
+      catch(Exception ex)
+      {  //some kind of exception error; log it and move on
+        Log.e(LOG_TAG, "Exception in OpFrag 'onCreateView()' adjusting button sizes", ex);
+      }
     }
     return graphScanFragmentViewObj;
   }

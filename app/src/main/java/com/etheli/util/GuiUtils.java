@@ -1,18 +1,20 @@
 //GuiUtils.java:  GUI-helper classes and utilities.
 //
-//  4/16/2017 -- [ET]
+//  4/20/2017 -- [ET]
 //
 package com.etheli.util;
 
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.graphics.Paint;
+import android.util.TypedValue;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.TabHost;
 import android.widget.TextView;
@@ -67,6 +69,31 @@ public class GuiUtils
           ((Button)vObj).setEnabled(enabledFlag);
         else if(vObj instanceof ViewGroup)
           setViewButtonsEnabledState(vObj,enabledFlag);
+      }
+    }
+  }
+
+  /**
+   * Scales the text size on all Button objects that are children of
+   * the given View (ViewGroup) object or its descendants.
+   * @param viewObj parent View (ViewGroup) object.
+   * @param scaleVal scale-factor value.
+   */
+  public static void scaleButtonTextSizes(View viewObj, float scaleVal)
+  {
+    if(viewObj instanceof ViewGroup)
+    {  //given view is a ViewGroup
+      final ViewGroup vGroupObj = (ViewGroup)viewObj;
+      View vObj;
+      for(int i=0; i<vGroupObj.getChildCount(); ++i)
+      {  //for each child; if button then set on-click listener
+        if((vObj=vGroupObj.getChildAt(i)) instanceof Button && !(vObj instanceof CheckBox))
+        {  //object is Button (but not CheckBox)
+          ((Button)vObj).setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                                                  ((Button)vObj).getTextSize() * scaleVal);
+        }
+        else if(vObj instanceof ViewGroup)
+          scaleButtonTextSizes(vObj,scaleVal);
       }
     }
   }

@@ -2,8 +2,7 @@
 <resources>
 
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.4</string>
-    <string name="app_ver_code">40</string>
+    <string name="app_version">0.5</string>
     <string name="about_text">http://www.etheli.com/ArduVidRx</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
@@ -42,9 +41,10 @@
     <string name="resumegraph_button_name">Resume</string>
 
     <string name="tab_tune_name">Tune</string>
-    <string name="tab_fine_name">Fine</string>
-    <string name="tab_monitor_name">Monitor</string>
     <string name="tab_scan_name">Scan</string>
+    <string name="tab_monitor_name">Monitor</string>
+    <string name="tab_monitor_name_small">Monitr</string>
+    <string name="tab_fine_name">Fine</string>
 
     <string name="chansel_dialog_title">Select Channel</string>
     <string name="freqsel_dialog_title">Enter Frequency</string>

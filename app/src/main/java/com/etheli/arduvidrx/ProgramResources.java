@@ -1,6 +1,6 @@
 //ProgramResources.java:  Global program resources singleton.
 //
-//   3/8/2017 -- [ET]
+//  4/20/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -13,6 +13,11 @@ import android.os.Message;
  */
 public class ProgramResources
 {
+    /** When screen size is smaller than this, button-text sizes will be reduced. */
+  public static final int SMALL_SCREEN_LIMIT = 550;
+    /** Scale value for when button-text sizes are reduced. */
+  public static final float BUTTON_SMSCALE_VAL = 0.8f;
+
     /** Main-GUI update handler:  Version information. */
   public static final int MAINGUI_UPD_VERSION = 1;
     /** Main-GUI update handler:  Channel and RSSI values. */
