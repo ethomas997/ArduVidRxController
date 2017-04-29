@@ -1,6 +1,6 @@
 //BluetoothSerialService.java:  Bluetooth communications manager.
 //
-// 10/22/2016 -- [ET]  File modified from BlueTerm project.
+//  4/28/2017 -- [ET]  File modified from BlueTerm project.
 
 /*
  * Copyright (C) 2009 The Android Open Source Project
@@ -57,7 +57,7 @@ public class BluetoothSerialService {
 
     // Member fields
 	private BluetoothAdapter mBluetoothAdapter = null;
-    private final Handler mHandler;
+    private Handler mHandler;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
@@ -67,6 +67,7 @@ public class BluetoothSerialService {
 
     private DataWriteReceiver mDataWriteReceiverObj;
     private Activity mParentActivityObj;
+    private static final Object destinationThreadSyncObj = new Object();
 
     // Constants that indicate the current connection state
     public static final int STATE_NONE = 0;       // we're doing nothing
@@ -90,7 +91,7 @@ public class BluetoothSerialService {
      * Constructor. Prepares a new service session.
      * @param context  The UI Activity Context
      * @param handler  A Handler to send messages back to the UI Activity
-     * @param dataWriteRecObj object that will receive data directly from the serial channel.
+     * @param dataWriteRecObj Object that will receive data directly from the serial channel.
      */
     public BluetoothSerialService(Activity context, Handler handler, DataWriteReceiver dataWriteRecObj) {
         mState = STATE_NONE;
@@ -98,6 +99,139 @@ public class BluetoothSerialService {
         mDataWriteReceiverObj = dataWriteRecObj;
         mParentActivityObj = context;
         mAllowInsecureConnections = true;
+    }
+
+    /**
+     * Sets the destination objects for the service.
+     * @param parentActObj The UI Activity Context.
+     * @param handlerObj A Handler to send messages back to the UI Activity.
+     * @param dataWriteRecObj Object that will receive data directly from the serial channel.
+     */
+    public void setDestinationObjects(Activity parentActObj, Handler handlerObj,
+                                                             DataWriteReceiver dataWriteRecObj) {
+        synchronized(destinationThreadSyncObj) {
+            mParentActivityObj = parentActObj;
+            mHandler = handlerObj;
+            mDataWriteReceiverObj = dataWriteRecObj;
+        }
+    }
+
+    /**
+     * Clears the destination objects for the service.  If the objects match those
+     * most-recently set then they will be cleared so they are no longer invoked.
+     * @param handlerObj A Handler to send messages back to the UI Activity.
+     * @param dataWriteRecObj Object that will receive data directly from the serial channel.
+     */
+    public void clearDestinationObjects(Handler handlerObj, DataWriteReceiver dataWriteRecObj) {
+        synchronized(destinationThreadSyncObj) {
+            if(handlerObj == mHandler)
+                mHandler = null;
+            if(dataWriteRecObj == mDataWriteReceiverObj)
+                mDataWriteReceiverObj = null;
+        }
+    }
+
+    /**
+     * Determines if the destination objects for the service have been cleared.
+     * @return true if the destination objects for the service have been cleared.
+     */
+    public boolean areDestinationObjectsClear() {
+        synchronized(destinationThreadSyncObj) {
+            return (mHandler == null && mDataWriteReceiverObj == null);
+        }
+    }
+
+    /**
+     * Returns the parent-activity object in use.
+     * @return The UI Activity Context.
+     */
+    private Activity getParentActivityObj() {
+        synchronized(destinationThreadSyncObj) {
+            return mParentActivityObj;
+        }
+    }
+
+    /**
+     * Returns a new message using the destination handler.
+     * @param what Value to assign to the returned Message.what field.
+     * @param arg1 Value to assign to the returned Message.arg1 field.
+     * @param arg2 Value to assign to the returned Message.arg2 field.
+     * @param obj Value to assign to the returned Message.obj field.
+     * @return A Message object, or null if the destination handler is not setup.
+     */
+    private Message obtainMHandlerMessage(int what, int arg1, int arg2, Object obj) {
+        synchronized(destinationThreadSyncObj) {
+            if(mHandler == null)
+                return null;
+            return mHandler.obtainMessage(what,arg1,arg2,obj);
+        }
+    }
+
+    /**
+     * Returns a new message using the destination handler.
+     * @param what Value to assign to the returned Message.what field.
+     * @param arg1 Value to assign to the returned Message.arg1 field.
+     * @param arg2 Value to assign to the returned Message.arg2 field.
+     * @return A Message object, or null if the destination handler is not setup.
+     */
+    private Message obtainMHandlerMessage(int what, int arg1, int arg2) {
+        synchronized(destinationThreadSyncObj) {
+            if(mHandler == null)
+                return null;
+            return mHandler.obtainMessage(what,arg1,arg2);
+        }
+    }
+
+    /**
+     * Returns a new message using the destination handler.
+     * @param what Value to assign to the returned Message.what field.
+     * @return A Message object, or null if the destination handler is not setup.
+     */
+    private Message obtainMHandlerMessage(int what) {
+        synchronized(destinationThreadSyncObj) {
+            if(mHandler == null)
+                return null;
+            return mHandler.obtainMessage(what);
+        }
+    }
+
+    /**
+     * Sends the given message using the destination handler.
+     * @param msgObj A Message object.
+     */
+    private void sendMHandlerMessage(Message msgObj) {
+        final Handler handlerObj;
+        synchronized(destinationThreadSyncObj) {
+            handlerObj = mHandler;
+        }
+        if(handlerObj != null)
+            handlerObj.sendMessage(msgObj);
+    }
+
+    /**
+     * Stops the service if it is running and the destination objects for
+     * the service are clear after the given delay time.
+     * @param delayMs delay time before checking objects.
+     */
+    public void stopIfDestinationObjsStayClear(final int delayMs) {
+        if(mState == STATE_CONNECTED) {
+            (new Thread("stopIfDestinationObjsStayClear") {
+                public void run() {
+                    try {
+                        for(int i=0; i<11; ++i) {
+                            sleep(delayMs/10);
+                            if(mState != STATE_CONNECTED)       //if disconnected while waiting
+                                return;                         // then don't do anything
+                        }
+                        if(areDestinationObjectsClear())        //if no dest objs have been setup
+                            BluetoothSerialService.this.stop(); // then stop service
+                    }
+                    catch(Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }).start();
+        }
     }
 
     /**
@@ -114,7 +248,8 @@ public class BluetoothSerialService {
 
 		if (!mEnablingFlag) {     //enabling of adapter not already attempted
 		    if (!mBluetoothAdapter.isEnabled()) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(mParentActivityObj);
+                final Activity activityObj = getParentActivityObj();
+                AlertDialog.Builder builder = new AlertDialog.Builder(activityObj);
                 builder.setMessage(R.string.alert_dialog_turn_on_bt)
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .setTitle(R.string.alert_dialog_warning_title)
@@ -123,7 +258,7 @@ public class BluetoothSerialService {
                     	public void onClick(DialogInterface dialog, int id) {
                     		mEnablingFlag = true;
                     		Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    		mParentActivityObj.startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+                    		activityObj.startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
                     	}
                     })
                     .setNegativeButton(R.string.alert_dialog_no, new DialogInterface.OnClickListener() {
@@ -162,8 +297,9 @@ public class BluetoothSerialService {
         if (mBluetoothAdapter != null) {
             if (mState == STATE_NONE) {
                 // Launch the DeviceListActivity to see devices and do scan
-                final Intent intentObj = new Intent(mParentActivityObj, DeviceListActivity.class);
-                mParentActivityObj.startActivityForResult(intentObj,
+                final Activity activityObj = getParentActivityObj();
+                final Intent intentObj = new Intent(activityObj, DeviceListActivity.class);
+                activityObj.startActivityForResult(intentObj,
                                                    BluetoothSerialService.REQUEST_CONNECT_DEVICE);
             }
         }
@@ -227,7 +363,7 @@ public class BluetoothSerialService {
     }
 
     public void showNoBluetoothDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(mParentActivityObj);
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivityObj());
         builder.setMessage(R.string.alert_dialog_no_bt)
         .setIcon(android.R.drawable.ic_dialog_info)
         .setTitle(R.string.app_name)
@@ -246,9 +382,10 @@ public class BluetoothSerialService {
      */
     public void testSendStateConnectedMessage() {
         // Create message object
-        final Message msgObj = mHandler.obtainMessage(MESSAGE_STATE_CHANGE, STATE_CONNECTED, -1);
+        final Message msgObj = obtainMHandlerMessage(MESSAGE_STATE_CHANGE, STATE_CONNECTED, -1);
         // Give the new state to the Handler
-        msgObj.sendToTarget();
+        if(msgObj != null)
+            msgObj.sendToTarget();
     }
 
     /**
@@ -259,17 +396,19 @@ public class BluetoothSerialService {
         if (D) Log.d(TAG, "setState() " + mState + " -> " + state);
         mState = state;
         // Create message object
-        final Message msgObj = mHandler.obtainMessage(MESSAGE_STATE_CHANGE, state, -1);
-        // Add device info (if available) to message object
-        final BluetoothDevice devObj;
-        if(mConnectThread != null && (devObj=mConnectThread.getDeviceObj()) != null) {
-            final Bundle bundleObj = new Bundle();
-            bundleObj.putString(DEVICE_NAME,devObj.getName());
-            bundleObj.putString(DEVICE_ADDRESS,devObj.getAddress());
-            msgObj.setData(bundleObj);
+        final Message msgObj = obtainMHandlerMessage(MESSAGE_STATE_CHANGE, state, -1);
+        if(msgObj != null) {
+            // Add device info (if available) to message object
+            final BluetoothDevice devObj;
+            if(mConnectThread != null && (devObj=mConnectThread.getDeviceObj()) != null) {
+                final Bundle bundleObj = new Bundle();
+                bundleObj.putString(DEVICE_NAME,devObj.getName());
+                bundleObj.putString(DEVICE_ADDRESS,devObj.getAddress());
+                msgObj.setData(bundleObj);
+            }
+            // Give the new state to the Handler so the UI Activity can update
+            msgObj.sendToTarget();
         }
-        // Give the new state to the Handler so the UI Activity can update
-        msgObj.sendToTarget();
     }
 
     /**
@@ -324,12 +463,14 @@ public class BluetoothSerialService {
         mConnectedThread.start();
 
         // Send the name of the connected device back to the UI Activity
-        final Message msg = mHandler.obtainMessage(MESSAGE_DEVICE_INFO);
-        final Bundle bundle = new Bundle();
-        bundle.putString(DEVICE_NAME, device.getName());
-        bundle.putString(DEVICE_ADDRESS, device.getAddress());
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);
+        final Message msg = obtainMHandlerMessage(MESSAGE_DEVICE_INFO);
+        if(msg != null) {
+            final Bundle bundle = new Bundle();
+            bundle.putString(DEVICE_NAME, device.getName());
+            bundle.putString(DEVICE_ADDRESS, device.getAddress());
+            msg.setData(bundle);
+            sendMHandlerMessage(msg);
+        }
 
         setState(STATE_CONNECTED);
     }
@@ -376,18 +517,20 @@ public class BluetoothSerialService {
      */
     private void connectionFailed() {
         setState(STATE_NONE);
-        String msgStr = mParentActivityObj.getString(R.string.nsg_unable_to_connect);
+        String msgStr = getParentActivityObj().getString(R.string.nsg_unable_to_connect);
         // Add device name (if available) to message text
         final BluetoothDevice devObj;
         if(mConnectThread != null && (devObj=mConnectThread.getDeviceObj()) != null) {
             msgStr += " " + devObj.getName();
         }
         // Send a failure message back to the Activity
-        final Message msg = mHandler.obtainMessage(MESSAGE_SHOWTEXT);
-        final Bundle bundle = new Bundle();
-        bundle.putString(SHOW_TEXT, msgStr);
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);
+        final Message msg = obtainMHandlerMessage(MESSAGE_SHOWTEXT);
+        if(msg != null) {
+            final Bundle bundle = new Bundle();
+            bundle.putString(SHOW_TEXT, msgStr);
+            msg.setData(bundle);
+            sendMHandlerMessage(msg);
+        }
     }
 
     /**
@@ -398,11 +541,13 @@ public class BluetoothSerialService {
 
         if(!canceledFlag) {       //if not canceled by user
             // Send a failure message back to the Activity
-            Message msg = mHandler.obtainMessage(MESSAGE_SHOWTEXT);
-            Bundle bundle = new Bundle();
-            bundle.putString(SHOW_TEXT, mParentActivityObj.getString(R.string.msg_connection_lost));
-            msg.setData(bundle);
-            mHandler.sendMessage(msg);
+            Message msg = obtainMHandlerMessage(MESSAGE_SHOWTEXT);
+            if(msg != null) {
+                Bundle bundle = new Bundle();
+                bundle.putString(SHOW_TEXT, getParentActivityObj().getString(R.string.msg_connection_lost));
+                msg.setData(bundle);
+                sendMHandlerMessage(msg);
+            }
         }
     }
 
@@ -526,12 +671,15 @@ public class BluetoothSerialService {
                     // Read from the InputStream
                     bytes = mmInStream.read(buffer);
 
-                    mDataWriteReceiverObj.write(buffer, bytes);
+                    synchronized(destinationThreadSyncObj) {
+                        if(mDataWriteReceiverObj != null)
+                            mDataWriteReceiverObj.write(buffer, bytes);
+                    }
                     // Send the obtained bytes to the UI Activity
-                    //mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
+                    //obtainMHandlerMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
                 } catch (IOException e) {
                     if(mmCanceledFlag)
-                      Log.d(TAG, "disconnected by user", e);
+                      Log.d(TAG, "disconnected by user");
                     else
                       Log.e(TAG, "disconnected", e);
                     connectionLost(mmCanceledFlag);
@@ -549,8 +697,10 @@ public class BluetoothSerialService {
                 mmOutStream.write(buffer);
 
                 // Share the sent message back to the UI Activity
-                mHandler.obtainMessage(MESSAGE_WRITE, buffer.length, -1, buffer)
-                        .sendToTarget();
+                final Message msgObj =
+                                  obtainMHandlerMessage(MESSAGE_WRITE, buffer.length, -1, buffer);
+                if(msgObj != null)
+                    msgObj.sendToTarget();
             } catch (IOException e) {
                 Log.e(TAG, "Exception during write", e);
             }

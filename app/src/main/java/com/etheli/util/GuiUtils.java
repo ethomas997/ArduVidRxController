@@ -1,25 +1,22 @@
 //GuiUtils.java:  GUI-helper classes and utilities.
 //
-//  4/20/2017 -- [ET]
+//  4/26/2017 -- [ET]
 //
+
 package com.etheli.util;
 
 import android.app.Activity;
+import android.app.FragmentManager;
 import android.content.res.Configuration;
 import android.graphics.Paint;
 import android.util.TypedValue;
 import android.view.Display;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.TabHost;
 import android.widget.TextView;
-
-import static android.R.style.Widget;
+import android.widget.Toast;
 
 /**
  * Class GuiUtils defines a set of GUI-helper classes and utilities.
@@ -96,6 +93,50 @@ public class GuiUtils
           scaleButtonTextSizes(vObj,scaleVal);
       }
     }
+  }
+
+  /**
+   * Clears any back-stack actions on the given fragment manager.
+   * @param fragMgrObj fragment manager object.
+   */
+  public static void clearBackStackEntries(FragmentManager fragMgrObj)
+  {
+    try
+    {
+      int cnt = 0;           //clear back stack entries (but don't get stuck)
+      while(fragMgrObj.getBackStackEntryCount() > 0 && ++cnt < 100)
+        fragMgrObj.popBackStackImmediate();
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; just move on
+    }
+  }
+
+  /**
+   * Displays a popup message.
+   * @param activityObj Activity object to use for 'getApplicationContext()' call.
+   * @param msgStr message text to display.
+   */
+  public static void showPopupMessage(Activity activityObj, String msgStr)
+  {
+    try
+    {
+      Toast.makeText(activityObj.getApplicationContext(),msgStr, Toast.LENGTH_SHORT).show();
+    }
+    catch(Exception ex)
+    {
+      ex.printStackTrace();
+    }
+  }
+
+  /**
+   * Displays a popup message.
+   * @param activityObj Activity object to use for 'getApplicationContext()' call.
+   * @param msgId resource ID of message.
+   */
+  public static void showPopupMessage(Activity activityObj, int msgId)
+  {
+    showPopupMessage(activityObj,activityObj.getString(msgId));
   }
 
   /**

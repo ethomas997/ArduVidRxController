@@ -1,6 +1,6 @@
 //OperationFragment.java:  Defines the main operations screen and functions.
 //
-//  4/20/2017 -- [ET]
+//  4/28/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -14,16 +14,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ProgressBar;
 import android.widget.TabHost;
 import android.widget.TextView;
-import android.widget.Toast;
 import com.etheli.util.Averager;
 import com.etheli.util.DialogUtils;
 import com.etheli.util.GuiUtils;
@@ -45,6 +42,7 @@ public class OperationFragment extends Fragment
   private ProgressBar rssiProgressBarObj = null;
   private TextView rssiValueTextViewObj = null;
   private TabHost operationFragTabHostObj = null;
+  private boolean vidRecSerialConnectedFlag = false;
   private VidReceiverManager vidReceiverManagerObj = null;
   private FrequencyTable videoFrequencyTableObj = null;
   private ChannelTracker videoChannelTrackerObj = null;
@@ -82,8 +80,16 @@ public class OperationFragment extends Fragment
         vidReceiverManagerObj.setChannelTrackerObj(videoChannelTrackerObj);
               //setup so video-receiver-manager can update GUI widgets:
         vidReceiverManagerObj.setGuiUpdateHandlerObj(mainGuiUpdateHandlerObj);
+              //save connected state of receiver serial on entry:
+        vidRecSerialConnectedFlag = vidReceiverManagerObj.isReceiverSerialConnected();
       }
     }
+    else
+    {  //not first time through; save connected state of receiver serial on entry
+      vidRecSerialConnectedFlag = (vidReceiverManagerObj != null &&
+                                              vidReceiverManagerObj.isReceiverSerialConnected());
+    }
+
     if(operationFragmentViewObj == null)
     {  //view object not yet created
               //inflate fragment view from XML:
@@ -183,10 +189,25 @@ public class OperationFragment extends Fragment
               //setup utility-paint object for 'GuiUtils.getFillerStr()' method:
       GuiUtils.setUtilPaintObj(getView());
     }
-    if(vidReceiverManagerObj != null && vidReceiverManagerObj.isReceiverSerialConnected() &&
-                                            vidReceiverManagerObj.isReceiverUpdateWorkerPaused())
-    {  //update worker is paused; resume it
-      vidReceiverManagerObj.startupReceiverUpdateWorker();
+    if(vidReceiverManagerObj != null && vidReceiverManagerObj.isReceiverSerialConnected())
+    {  //if update worker is paused then resume it
+      if(vidReceiverManagerObj.isReceiverUpdateWorkerPaused())
+        vidReceiverManagerObj.startupReceiverUpdateWorker();
+    }
+    else if(vidRecSerialConnectedFlag)
+    {  //receiver-serial was previously connected, but now disconnected
+      vidRecSerialConnectedFlag = false;
+      if(getView() != null)
+      {
+        getView().post(new Runnable()
+            {      //post to give MainActivity a chance to resume and handle state change
+             @Override
+             public void run()
+             {
+               doDisconnectServiceAction();      //close and show ConnectFragment
+             }
+            });
+      }
     }
   }
 
@@ -271,12 +292,12 @@ public class OperationFragment extends Fragment
     switch(vObj.getId())
     {
       case R.id.disconnectButton:      //close connection
-        final BluetoothSerialService serviceObj;
-        if((serviceObj=programResourcesObj.getBluetoothSerialServiceObj()) != null)
-          serviceObj.doDisconnectDeviceAction();
+        doDisconnectServiceAction();
         break;
       case R.id.terminalButton:        //start 'terminal' activity
-        programResourcesObj.setTerminalStartingFlag();     //indicate starting
+        programResourcesObj.setTerminalActiveFlag(true);        //indicate starting
+        if(vidReceiverManagerObj != null)
+          vidReceiverManagerObj.pauseReceiverUpdateWorker(true);
         final Intent intentObj = new Intent(getActivity(),BlueTerm.class);
         startActivity(intentObj);
         break;
@@ -384,6 +405,23 @@ public class OperationFragment extends Fragment
   }
 
   /**
+   * Disconnects the serial service.
+   */
+  private void doDisconnectServiceAction()
+  {
+    try
+    {
+      final BluetoothSerialService serviceObj;
+      if((serviceObj=programResourcesObj.getBluetoothSerialServiceObj()) != null)
+        serviceObj.doDisconnectDeviceAction();
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; log it
+      Log.e(LOG_TAG, "Exception in OpFrag 'doDisconnectServiceAction()'", ex);
+    }
+  }
+
+  /**
    * Shows a select-channel choice dialog and handles the response.
    * @param titleId resource ID of title for dialog.
    * @param charSeqArr array of items to be displayed.
@@ -454,16 +492,16 @@ public class OperationFragment extends Fragment
       {  //entries-list string parsing failed
         final char ch;
         if((ch=scanStr.charAt(0)) < '0' || ch > '9')  //if doesn't start with numeric then
-          showPopupMessage(scanStr);                  //show received data as popup message
+          GuiUtils.showPopupMessage(getActivity(),scanStr);                  //show received data as popup message
         else
         {  //received data starts with numeric; show parsing-error popup message
-          showPopupMessage(R.string.msg_unable_scanparse);
+          GuiUtils.showPopupMessage(getActivity(),R.string.msg_unable_scanparse);
           Log.e(LOG_TAG, "showSelChanDialogForScanStr() error parsing:  " + scanStr);
         }
       }
     }
     else
-      showPopupMessage(R.string.msg_unable_scanrec);
+      GuiUtils.showPopupMessage(getActivity(),R.string.msg_unable_scanrec);
   }
 
   /**
@@ -518,32 +556,6 @@ public class OperationFragment extends Fragment
   }
 
   /**
-   * Displays a popup message.
-   * @param msgStr message text to display.
-   */
-  private void showPopupMessage(String msgStr)
-  {
-    try
-    {
-      Toast.makeText(getActivity().getApplicationContext(),msgStr,Toast.LENGTH_SHORT).show();
-    }
-    catch(Exception ex)
-    {
-      Log.e(LOG_TAG, "Error showing popup message", ex);
-      Log.e(LOG_TAG, "Popup message:  " + msgStr);
-    }
-  }
-
-  /**
-   * Displays a popup message.
-   * @param msgId resource ID of message.
-   */
-  private void showPopupMessage(int msgId)
-  {
-    showPopupMessage(getString(msgId));
-  }
-
-  /**
    * Class MainGuiUpdateHandler handles updates to the main GUI components.
    */
   private class MainGuiUpdateHandler extends Handler
@@ -594,7 +606,7 @@ public class OperationFragment extends Fragment
           break;
         case ProgramResources.MAINGUI_UPD_POPUPMSG:        //show popup message
           if(msgObj.obj instanceof String)
-            showPopupMessage((String)msgObj.obj);
+            GuiUtils.showPopupMessage(getActivity(),(String)msgObj.obj);
           break;
         case ProgramResources.MAINGUI_UPD_VRMGRSTARTED:    //video receiver started
           break;

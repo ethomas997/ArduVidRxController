@@ -1,12 +1,11 @@
 //ProgramResources.java:  Global program resources singleton.
 //
-//  4/20/2017 -- [ET]
+//  4/27/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
 
 import android.os.Handler;
-import android.os.Message;
 
 /**
  * Class ProgramResources defines a global program resources singleton.
@@ -35,19 +34,12 @@ public class ProgramResources
     /** Main-GUI update handler:  Show select-channel choice dialog. */
   public static final int MAINGUI_UPD_SELCHANNEL = 8;
 
-    /** Terminal state:  Started. */
-  public static final int TERMINAL_STATE_STARTED = 1;
-    /** Terminal state:  Stopped. */
-  public static final int TERMINAL_STATE_STOPPED = 2;
-
   private static ProgramResources programResourcesObj = null;
   private BluetoothSerialService bluetoothSerialServiceObj = null;
   private VidReceiverManager vidReceiverManagerObj = null;
   private FrequencyTable videoFrequencyTableObj = null;
-  private Handler terminalMsgHandlerObj = null;
-  private DataWriteReceiver terminalWriteRecvrObj = null;
-  private Handler terminalStateHandlerObj = null;
-  private boolean terminalStartingFlag = false;
+  private Runnable terminalStartupActionObj = null;
+  private boolean terminalActiveFlag = false;
 
   /**
    * Returns the ProgramResources object, creating it if needed.
@@ -115,77 +107,12 @@ public class ProgramResources
   }
 
   /**
-   * Sets the terminal-message handler object.  The handler will receive
-   * messages from the bluetooth-serial service.
-   * @param handlerObj terminal-message handler object.
+   * Sets the terminal-active flag.
+   * @param flagVal true if the terminal window is active, false if not.
    */
-  public void setTerminalMsgHandlerObj(Handler handlerObj)
+  public void setTerminalActiveFlag(boolean flagVal)
   {
-    terminalMsgHandlerObj = handlerObj;
-    terminalStartingFlag = false;
-  }
-
-  /**
-   * Returns the terminal-message handler object.  The handler will receive
-   * messages from the bluetooth-serial service.
-   * @return The terminal-message handler object, or null if none set.
-   */
-  public Handler getTerminalMsgHandlerObj()
-  {
-    return terminalMsgHandlerObj;
-  }
-
-  /**
-   * Invokes the terminal-message handler object (if set).  The handler
-   * will receive messages from the bluetooth-serial service.
-   * @param msgObj message for handler.
-   */
-  public void invokeTerminalMsgHandler(Message msgObj)
-  {
-    if(terminalMsgHandlerObj != null)
-      terminalMsgHandlerObj.handleMessage(msgObj);
-  }
-
-  /**
-   * Sets the terminal write-receiver object.  The object receives data
-   * directly from the bluetooth-serial service.
-   * @param recObj terminal write-receiver object.
-   */
-  public void setTerminalWriteRecvrObj(DataWriteReceiver recObj)
-  {
-    terminalWriteRecvrObj = recObj;
-  }
-
-  /**
-   * Returns the terminal write-receiver object.  The object receives data
-   * directly from the bluetooth-serial service.
-   * @return The terminal write-receiver object, or null if none set.
-   */
-  public DataWriteReceiver getTerminalWriteRecvrObj()
-  {
-    return terminalWriteRecvrObj;
-  }
-
-  /**
-   * Invokes the terminal write-receiver object (if set).  The object
-   * receives data directly from the bluetooth-serial service.
-   * @param buffer message data.
-   * @param length size of message data.
-   */
-  public void invokeTerminalWriteRecvr(byte[] buffer, int length)
-  {
-    if(terminalWriteRecvrObj != null)
-      terminalWriteRecvrObj.write(buffer,length);
-  }
-
-  /**
-   * Sets the terminal-starting flag indicating that the terminal
-   * activity is beginning.  The flag will be cleared when the
-   * 'setTerminalMsgHandlerObj()' function is called.
-   */
-  public void setTerminalStartingFlag()
-  {
-    terminalStartingFlag = true;
+    terminalActiveFlag = flagVal;
   }
 
   /**
@@ -194,36 +121,24 @@ public class ProgramResources
    */
   public boolean isTerminalActive()
   {
-    return (terminalStartingFlag ||
-                 (terminalMsgHandlerObj != null && terminalWriteRecvrObj != null));
+    return terminalActiveFlag;
   }
 
   /**
-   * Sets the terminal-state-change handler object.
-   * @param handlerObj terminal-state-change handler object.
+   * Sets the terminal-startup-action object.
+   * @param runnableObj action to be executed, or null for none.
    */
-  public void setTerminalStateHandlerObj(Handler handlerObj)
+  public void setTerminalStartupActionObj(Runnable runnableObj)
   {
-    terminalStateHandlerObj = handlerObj;
+    terminalStartupActionObj = runnableObj;
   }
 
   /**
-   * Returns the terminal-state-change handler object.
-   * @return The terminal-state-change handler object, or null if none set.
+   * Returns the terminal-startup-action object.
+   * @return The action to be executed, or null for none.
    */
-  public Handler getTerminalStateHandlerObj()
+  public Runnable getTerminalStartupActionObj()
   {
-    return terminalStateHandlerObj;
-  }
-
-  /**
-   * Sets the terminal-state value to be passed via the
-   * terminal-state-change handler.
-   * @param stateVal on of the 'TERMINAL_STATE_...' values.
-   */
-  public void setTerminalStateValue(int stateVal)
-  {
-    if(terminalStateHandlerObj != null)
-      terminalStateHandlerObj.obtainMessage(stateVal).sendToTarget();
+    return terminalStartupActionObj;
   }
 }

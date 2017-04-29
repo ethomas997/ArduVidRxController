@@ -86,10 +86,18 @@ public class ConnectFragment extends Fragment
   public void onStart()
   {
     super.onStart();
-    GuiUtils.setViewButtonsEnabledState(getView(),true);   //make sure buttons enabled
+    enableFragmentButtons();                //make sure buttons enabled
     connectTextViewObj = (TextView)getActivity().findViewById(R.id.connectTextView);
     if(connectTextViewObj != null)
       connectTextViewObj.setText("");       //clear any previous status message
+  }
+
+  /**
+   * Sets buttons on fragment to enabled.
+   */
+  public void enableFragmentButtons()
+  {
+    GuiUtils.setViewButtonsEnabledState(getView(),true);
   }
 
   /**
@@ -131,8 +139,7 @@ public class ConnectFragment extends Fragment
             break;
           case BluetoothSerialService.STATE_LISTEN:
           case BluetoothSerialService.STATE_NONE:
-                   //connect attempt failed; re-enable buttons:
-            GuiUtils.setViewButtonsEnabledState(getView(),true);
+            enableFragmentButtons();        //connect attempt failed; re-enable buttons
             break;
         }
         break;

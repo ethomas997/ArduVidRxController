@@ -1,6 +1,6 @@
 //VidReceiverManager.java:  Manages command I/O for an ArduVidRx unit.
 //
-//   4/7/2017 -- [ET]
+//  4/28/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -91,6 +91,7 @@ public class VidReceiverManager
   private Handler mainGuiUpdateHandlerObj = null;
   private char receivedLinesLastEndChar = '\0';
   private ReceiverUpdateWorker receiverUpdateWorkerObj = null;
+  private boolean recUpdWrkrPausedRequestedFlag = false;
   private CommandHandlerThread commandHandlerThreadObj = new CommandHandlerThread();
   private boolean monitorModeActiveFlag = false;
   private int minRssiForScansValue = 30;
@@ -131,6 +132,7 @@ public class VidReceiverManager
    */
   public void startManager()
   {
+    recUpdWrkrPausedRequestedFlag = false;       //clear pause-requested flag
     (new Thread("vidRecMgrStartup")
         {
           public void run()
@@ -233,6 +235,16 @@ public class VidReceiverManager
   {
     try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
     catch(InterruptedException ex) {}       //do one interval delay sending commands
+    if(recUpdWrkrPausedRequestedFlag)
+    {  //method 'pauseReceiverUpdateWorker()' was called
+      Log.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because of worker-pause request");
+      return;
+    }
+    if(!isReceiverSerialConnected())
+    {  //receiver serial link not connected
+      Log.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because serial disconnected");
+      return;
+    }
     if(outputReceiverEchoCommand(false) == null)      //send echo-off command
     {  //no response after command (can happen while waiting for TERMINAL_STATE_STOPPED msg)
       for(int c=0; c<20; ++c)
@@ -247,15 +259,23 @@ public class VidReceiverManager
     fetchMonIntvlValFromReceiver();         //get/save monitor-interval value from receiver
     try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
     catch(InterruptedException ex) {}       //do one interval delay before starting worker
-    if(!receiverUpdateWorkerObj.isAlive())
-    {  //worker thread not running
-      Log.d(LOG_TAG, "Starting receiver-update worker");
-      receiverUpdateWorkerObj.start();           //start update worker
+    if(!recUpdWrkrPausedRequestedFlag)
+    {  //method 'pauseReceiverUpdateWorker()' was not called during startup
+      if(!receiverUpdateWorkerObj.isAlive())
+      {  //worker thread not running
+        Log.d(LOG_TAG, "Starting receiver-update worker");
+        receiverUpdateWorkerObj.start();           //start update worker
+      }
+      else
+      {  //worker thread is running (paused)
+        Log.d(LOG_TAG, "Resuming receiver-update worker in startup");
+        receiverUpdateWorkerObj.resumeThread();    //resume update worker
+      }
     }
     else
-    {  //worker thread is running (paused)
-      Log.d(LOG_TAG, "Resuming receiver-update worker");
-      receiverUpdateWorkerObj.resumeThread();    //resume update worker
+    {  //method 'pauseReceiverUpdateWorker()' was called during startup
+      Log.d(LOG_TAG, "Not starting worker in 'doReceiverUpdateWorkerStartup()' " +
+                                                "because of worker-pause request");
     }
   }
 
@@ -266,6 +286,7 @@ public class VidReceiverManager
    */
   public void startupReceiverUpdateWorker()
   {
+    recUpdWrkrPausedRequestedFlag = false;       //clear pause-requested flag
     (new Thread("vidUpdWorkerStartup")
         {
           public void run()
@@ -282,9 +303,11 @@ public class VidReceiverManager
   {
     try
     {
-      commandHandlerThreadObj.sendMessage(VIDCMD_TERMINATE_MSGC);    //stop command handler
+      if(commandHandlerThreadObj.isAlive())
+        commandHandlerThreadObj.sendMessage(VIDCMD_TERMINATE_MSGC);  //stop command handler
       if(receiverUpdateWorkerObj != null)
       {  //worker was created; stop it
+        Log.d(LOG_TAG, "Stopping receiver-update worker");
         receiverUpdateWorkerObj.terminate(10);
         receiverUpdateWorkerObj = null;
       }
@@ -419,8 +442,10 @@ public class VidReceiverManager
    */
   public boolean pauseReceiverUpdateWorker(boolean retImmedFlag)
   {
+    recUpdWrkrPausedRequestedFlag = true;        //indicate pause requested
     if(receiverUpdateWorkerObj != null && !receiverUpdateWorkerObj.isThreadPaused())
     {
+//      Log.d(LOG_TAG, "Pausing receiver-update worker");
       receiverUpdateWorkerObj.pauseThread(retImmedFlag ? 0 : 1000);
       return true;
     }
@@ -432,8 +457,12 @@ public class VidReceiverManager
    */
   private void resumeReceiverUpdateWorker()
   {
+    recUpdWrkrPausedRequestedFlag = false;       //clear pause-requested flag
     if(receiverUpdateWorkerObj != null)
+    {
+//      Log.d(LOG_TAG, "Resuming receiver-update worker");
       receiverUpdateWorkerObj.resumeThread();
+    }
   }
 
   /**

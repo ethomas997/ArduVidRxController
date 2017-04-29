@@ -61,7 +61,7 @@ public class BlueTerm extends Activity {
     /**
      * Set to true to add debugging code and logging.
      */
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
 
     /**
      * Set to true to log each character received from the remote process to the
@@ -93,8 +93,8 @@ public class BlueTerm extends Activity {
      */
     private TermKeyListener mKeyListener;
 		
-	
     private BluetoothSerialService mSerialService = null;
+    private boolean mSerialConnectedFlag = false;
     
 	private InputMethodManager mInputManager;
 	
@@ -183,6 +183,8 @@ public class BlueTerm extends Activity {
         setContentView(R.layout.term_activity);
 
         mSerialService = programResourcesObj.getBluetoothSerialServiceObj();
+        mSerialConnectedFlag = (mSerialService != null &&  //save serial-connected state on entry
+                            mSerialService.getState() == BluetoothSerialService.STATE_CONNECTED);
 
         mEmulatorView = (EmulatorView) findViewById(R.id.emulatorView);
         mEmulatorView.initialize( this );
@@ -197,6 +199,8 @@ public class BlueTerm extends Activity {
                         //start with soft keyboard shown:
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
 
+        runTerminalStartupAction();
+
 		if (DEBUG)
 			Log.e(LOG_TAG, "+++ DONE IN ON CREATE +++");
 	}
@@ -206,11 +210,8 @@ public class BlueTerm extends Activity {
 		super.onStart();
 		if (DEBUG)
 			Log.e(LOG_TAG, "++ ON START ++");
-                   //connect terminal to bluetooth-serial I/O:
-        programResourcesObj.setTerminalMsgHandlerObj(mHandlerBT);
-        programResourcesObj.setTerminalWriteRecvrObj(mEmulatorView);
                    //report new terminal state:
-        programResourcesObj.setTerminalStateValue(ProgramResources.TERMINAL_STATE_STARTED);
+        programResourcesObj.setTerminalActiveFlag(true);        //indicate running
 	}
 
 	@Override
@@ -220,12 +221,17 @@ public class BlueTerm extends Activity {
 		if (DEBUG) {
 			Log.e(LOG_TAG, "+ ON RESUME +");
 		}
-        if (mSerialService != null) {       //if created then start or resume service
-            mSerialService.startResumeService();
+        if (mSerialService != null) {
+                   //connect terminal to bluetooth-serial I/O:
+            mSerialService.setDestinationObjects(this,mHandlerBT,mEmulatorView);
+            mSerialService.startResumeService();      //make sure service is running
 
             readPrefs();
             updatePrefs();
-            mEmulatorView.onResume();
+            if(mEmulatorView != null) {
+                mEmulatorView.onResume();
+                mInputManager.showSoftInput(mEmulatorView, InputMethodManager.SHOW_IMPLICIT);
+            }
         }
 	}
 
@@ -253,23 +259,41 @@ public class BlueTerm extends Activity {
         super.onStop();
         if(DEBUG)
         	Log.e(LOG_TAG, "-- ON STOP --");
-                   //report new terminal state:
-        programResourcesObj.setTerminalStateValue(ProgramResources.TERMINAL_STATE_STOPPED);
-                   //disconnect terminal from bluetooth-serial I/O:
-        programResourcesObj.setTerminalMsgHandlerObj(null);
-        programResourcesObj.setTerminalWriteRecvrObj(null);
+        programResourcesObj.setTerminalActiveFlag(false);       //indicate stopped
     }
 
-//	@Override
-//	public void onDestroy() {
-//		super.onDestroy();
-//		if (DEBUG)
-//			Log.e(LOG_TAG, "--- ON DESTROY ---");
-//
-//        if (mSerialService != null)
-//        	mSerialService.stop();
-//
-//	}
+	@Override
+	public void onDestroy() {
+		if (DEBUG)
+			Log.e(LOG_TAG, "--- ON DESTROY ---");
+        if (mSerialService != null) {
+                   //disconnect terminal from bluetooth-serial I/O:
+            mSerialService.clearDestinationObjects(mHandlerBT,mEmulatorView);
+                   //if other activity doesn't use service then stop service:
+            mSerialService.stopIfDestinationObjsStayClear(1000);
+        }
+		super.onDestroy();
+	}
+
+    /**
+     * Performs the terminal-startup action configured via ProgramResources.
+     */
+    private void runTerminalStartupAction() {
+        final Runnable actionObj;
+        if((actionObj=programResourcesObj.getTerminalStartupActionObj()) != null) {
+            (new Thread("terminalStartupAction") {
+                public void run() {         //separate thread so not on main-UI thread
+                    try {
+                        sleep(100);         //delay to let terminal I/O setup
+                        actionObj.run();
+                    }
+                    catch(Exception ex) {
+                        Log.e(BlueTerm.LOG_TAG, "Exception running terminal-startup action", ex);
+                    }
+                }
+            }).start();
+        }
+    }
 
     private void readPrefs() {
         mLocalEcho = mPrefs.getBoolean(LOCALECHO_KEY, mLocalEcho);
@@ -398,15 +422,16 @@ public class BlueTerm extends Activity {
 
                 case BluetoothSerialService.STATE_LISTEN:
                 case BluetoothSerialService.STATE_NONE:
-//                	if (mMenuItemConnect != null) {
-//                		mMenuItemConnect.setIcon(android.R.drawable.ic_menu_search);
-//                		mMenuItemConnect.setTitle(R.string.connect);
-//                	}
-
-            		mInputManager.hideSoftInputFromWindow(mEmulatorView.getWindowToken(), 0);
-
-                    mTitle.setText(R.string.title_not_connected);
-
+//                    if (mMenuItemConnect != null) {
+//                        mMenuItemConnect.setIcon(android.R.drawable.ic_menu_search);
+//                        mMenuItemConnect.setTitle(R.string.connect);
+//                    }
+//                    mInputManager.hideSoftInputFromWindow(mEmulatorView.getWindowToken(), 0);
+//                    mTitle.setText(R.string.title_not_connected);
+                    if(mSerialConnectedFlag) {             //if serial was connected on entry
+                        mSerialConnectedFlag = false;
+                        finish();                          //close terminal
+                    }
                     break;
                 }
                 break;
@@ -415,7 +440,6 @@ public class BlueTerm extends Activity {
             		byte[] writeBuf = (byte[]) msg.obj;
             		mEmulatorView.write(writeBuf, msg.arg1);
             	}
-
                 break;
 /*                
             case MESSAGE_READ:
