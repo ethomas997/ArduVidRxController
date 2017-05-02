@@ -147,6 +147,8 @@ public class EmulatorView extends View implements DataWriteReceiver, GestureDete
 
     private BlueTerm mBlueTerm;
 
+    private boolean adjustHeightActionBarDone = false;
+
     private Runnable mCheckSize = new Runnable() {
         public void run() {
             updateSize();
@@ -607,6 +609,8 @@ public class EmulatorView extends View implements DataWriteReceiver, GestureDete
         if(w <= 0 || h <= 0)
         	return;
 
+        h = adjustHeightForActionBar(h);
+
         mColumns = w / mCharacterWidth;
         mRows = h / mCharacterHeight;
 
@@ -642,6 +646,28 @@ public class EmulatorView extends View implements DataWriteReceiver, GestureDete
               updateSize( w, h );
             }
         }
+    }
+
+    //Adjusts the given height to account for the action bar being shown
+    // the first time the view is displayed and when the soft keyboard
+    // is not visible.  (Some ugly but apparently effective code.)
+    private int adjustHeightForActionBar(int heightVal) {
+        try {
+            final int dispHeight =
+                  mBlueTerm.getWindowManager().getDefaultDisplay().getHeight();
+            if(heightVal < dispHeight - 200) {    //if soft keyboard showing then
+                if(adjustHeightActionBarDone)     //only adjust height the first time
+                    return heightVal;
+                adjustHeightActionBarDone = true;
+            }      //if soft keyboard not showing then always adjust height for action bar
+            final int adjVal = (mBlueTerm.getActionBar() != null) ?
+                                          mBlueTerm.getActionBar().getHeight() : 0;
+            if(heightVal > adjVal)
+                heightVal -= adjVal;
+        }
+        catch(Exception ex) {
+        }
+        return heightVal;
     }
 
     /**
