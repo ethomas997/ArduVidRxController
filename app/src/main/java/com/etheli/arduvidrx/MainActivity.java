@@ -75,8 +75,8 @@ public class MainActivity extends Activity
       programResourcesObj.setFrequencyTableObj(videoFrequencyTableObj);
       setupTerminalStartupAction();    //setup startup action for terminal
     }
-    else  //resources created via previous instance
-      ensureConnectionClosed();        //make sure connection not stuck
+    else if(!programResourcesObj.isTerminalActive())  //if not resuming after terminal activity
+      ensureConnectionClosed();             //make sure connection not stuck
 
          //show ConnectFragement:
     if((fragementContainerViewObj=findViewById(R.id.fragment_container)) != null)
@@ -114,6 +114,7 @@ public class MainActivity extends Activity
         bluetoothSerialServiceObj.startResumeService();
       }
     }
+    programResourcesObj.setTerminalActiveFlag(false);      //indicate terminal not runnung
   }
 
   /**

@@ -210,8 +210,6 @@ public class BlueTerm extends Activity {
 		super.onStart();
 		if (DEBUG)
 			Log.e(LOG_TAG, "++ ON START ++");
-                   //report new terminal state:
-        programResourcesObj.setTerminalActiveFlag(true);        //indicate running
 	}
 
 	@Override
@@ -259,7 +257,6 @@ public class BlueTerm extends Activity {
         super.onStop();
         if(DEBUG)
         	Log.e(LOG_TAG, "-- ON STOP --");
-        programResourcesObj.setTerminalActiveFlag(false);       //indicate stopped
     }
 
 	@Override
