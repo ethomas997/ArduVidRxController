@@ -1,0 +1,124 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-gb" lang="en-gb"><head>
+
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <meta http-equiv="content-style-type" content="text/css" /><title>ArduVidRx Firmware</title>
+  <meta content="Eric Thomas" name="author" /></head><body alink="#000099" bgcolor="#ccccff" link="#000099" text="#000000" vlink="#990099">
+<center>
+<h2>ArduVidRx Controller</h2>
+</center>
+<center><a href="pic/ArduVidRxController_sshot1.jpg"><img src="pic/ArduVidRxController_sshot1.jpg" alt="" height="200" width="138" /></a>
+</center>
+<br />
+<big>
+ArduVidRxController is an Android app for controlling an <a href="http://www.etheli.com/ArduVidRx" target="_blank">ArduVidRx
+receiver</a>.&nbsp; See below for information on the screens and buttons.<br />
+</big>
+<h2>Connect Screen Buttons</h2>
+<big>
+<b>Connect</b>:&nbsp; Establish a Bluetooth connection to the receiver.<br />
+<b>Devices</b>:&nbsp; Select from the list of Bluetooth
+devices that have been paired.<br />
+<b>Test</b>:&nbsp; Enter a test mode where screen are
+display and
+buttons may be used but not actual hardware is connected.<br />
+</big>
+<h2>Operation Screen Widgets</h2>
+<big>The first of text on the Operation Screen shows the revision
+information for the currently-connected receiver.&nbsp; The second line
+displays the currently-tuned channel.&nbsp; The indicator bar below
+shows the live RSSI (signal strength) value for the currently-tuned
+channel.<br />
+<b>RSSI audio tone</b>:&nbsp; Selecting this checkbox will enable an
+audio tone indicating the live RSSI (signal strength) value for the
+currently-tuned channel.</big><br />
+<h2>Operation Screen Buttons</h2>
+<big>
+
+<i><b>Tune Group</b></i><br />
+
+<br />
+<b>Channel</b>:&nbsp; Select a channel to be tuned on the receiver.<br />
+<b>Frequency</b>:&nbsp; Enter a frequency (in MHz) to be tuned on the
+receiver.<br />
+<b>Next Band</b>:&nbsp; Increment the tuned channel-code by one band
+(i.e., "A1" to "B1").<br />
+<b>Prev Band</b>:&nbsp; Decrement the tuned channel-code by
+one band (i.e., "B1" to "A1").</big><br />
+
+<big><b>Next Chan</b>:&nbsp; Increment the tuned channel-code by one
+channel # (i.e., "A1" to "A2").<br />
+<b>Prev Chan</b>:&nbsp; Decrement the tuned channel-code by
+one channel # (i.e., "A2" to "A1").</big><br />
+
+<big><br />
+<i><b>Scan Group</b></i><br />
+<br />
+<b>Chan Scan</b>:&nbsp; Perform a band scan and display the channels
+with RSSI (signal strength) levels above the "Min RSSI" level.&nbsp;
+Only the channels with the highest RSSI values are shown.<br />
+<b>Frequency</b>:&nbsp; Perform a band scan and display the
+channels with RSSI levels above the "Min RSSI" level.&nbsp; All
+detected channels are shown.<br />
+<b>Min RSSI</b>:&nbsp; Enter the minimum-RSSI value for scans (and
+monitor functions).&nbsp; Channels with RSSI (signal strength) levels
+above this value are considered to have a signal on them.<br />
+<b>Auto Tune</b>:&nbsp; Perform a band scan and
+tune the receiver to the channel with strongest signal (highest RSSI).</big><br />
+
+<big><b>Graph Scan</b>:&nbsp; Display the <a href="#graphscan">Graph Scan</a> screen.<br />
+<br />
+<i><b>Monitor Group</b></i><br />
+<br />
+<b>Next Ch</b>:&nbsp; Tune the receiver to the next channel among those
+detected to have a signal on them.&nbsp; The band is scanned as needed
+to detect which channels have signals.<br />
+<b>Prev Ch</b>:&nbsp; Tune the receiver to the previous channel among those
+detected to have a signal on them.&nbsp; The band is scanned as needed to
+detect which channels have signals.<br />
+<b>Monitor</b>:&nbsp; Automatically tune the receiver through the channels detected to have
+a signal on them, changing channels on a periodic basis.&nbsp; The band is scanned as needed to detect which
+channels have signals.<br />
+<b>Min RSSI</b>:&nbsp; Enter the minimum-RSSI value for montior (and scan functions).&nbsp; Channels with RSSI (signal strength) levels
+above this value are considered to have a signal on them.<br />
+<b>Interval</b>:&nbsp; Enter the interval value (in seconds) for the automatic channel switching of the Monitor-button function.</big><br />
+
+
+<big><b>Rescan</b>:&nbsp; Perform a band scan to detect which channels have signals.<br />
+<br />
+<i><b>Fine Group</b></i><br />
+<br />
+<b>+1 MHz</b>:&nbsp; Increase the value of the frequency tuned on the receiver by 1 MHz.<br />
+<b>-1 MHz</b>:&nbsp; Decrease the value of the frequency tuned on the receiver by 1 MHz.<br />
+<b>+10 MHz</b>:&nbsp; Increase the value of the frequency tuned on the receiver by 10 MHz.<br />
+<b>-10 MHz</b>:&nbsp; Decrease the value of the frequency tuned on the receiver by 10 MHz.<br />
+<b>+100 MHz</b>:&nbsp; Increase the value of the frequency tuned on the receiver by 100 MHz.<br />
+<b>-100 MHz</b>:&nbsp; Decrease the value of the frequency tuned on the receiver by 100 MHz.<br />
+</big>
+<h2>General Buttons</h2>
+
+<big>
+<b>Terminal</b>:&nbsp; Enter Terminal mode, in which CLI commands may be executed.<br />
+<b>Disconnect</b>:&nbsp; Closes the Bluetooth connection to the receiver.<br />
+</big>
+<a name="graphscan" />
+<h2>Graph Scan Screen Buttons</h2>
+
+<big>
+<b>Values</b>:&nbsp; Pause the scan and display a dialog showing the
+numeric RSSI values for all the channels.&nbsp; The channel with the
+highest RSSI value is tuned on the receiver, and selecting a channel on
+the dialog will tune it on the receiver.<br />
+<b>Pause</b>:&nbsp; Pause the scan.&nbsp; The channel with the highest RSSI value is indicated on the graph and tuned on the receiver.&nbsp;
+Touching bars displayed on the graph will tune the receiver to the
+associated channel (and show channel / RSSI information below the
+graph).<br />
+<b>Close</b>:&nbsp; Close the graph and return to the Operation Screen.<br /><br /><br />
+Check out the ArduVidRx home page:&nbsp; <a href="http://www.etheli.com/ArduVidRx" target="_blank">http://www.etheli.com/ArduVidRx</a><br />
+<br />
+<hr /><br />
+Click <a target="_blank" href="http://www.etheli.com/contact/index.html">here to
+contact me</a><br />
+<br />
+<a target="_blank" href="http://www.etheli.com">etheli.com home page</a></big><br />
+</body></html>
