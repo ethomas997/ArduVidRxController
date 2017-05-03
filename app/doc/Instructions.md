@@ -13,14 +13,14 @@ Connect Screen Buttons
 
 **Connect**:  Establish a Bluetooth connection to the receiver.  
 **Devices**:  Select from the list of Bluetooth devices that have been
-paired.  
-**Test**:  Enter a test mode where screen are display and buttons may
-be used but not actual hardware is connected.  
+paired and establish a connection.  
+**Test**:  Enter a test mode where screens are displayed and buttons may
+be used but no actual hardware is connected.  
 
 Operation Screen Widgets
 ------------------------
 
-The first of text on the Operation Screen shows the revision information
+The first line of text on the Operation Screen shows the revision information
 for the currently-connected receiver.  The second line displays the
 currently-tuned channel.  The indicator bar below shows the live RSSI
 (signal strength) value for the currently-tuned channel.  
@@ -56,7 +56,7 @@ levels above the "Min RSSI" level.  All detected channels are shown.
 functions).  Channels with RSSI (signal strength) levels above this
 value are considered to have a signal on them.  
 **Auto Tune**:  Perform a band scan and tune the receiver to the
-channel with strongest signal (highest RSSI).  
+channel with the strongest signal (highest RSSI).  
 **Graph Scan**:  Display the [Graph Scan](#graphscan) screen.  
  
 ***Monitor Group***
@@ -71,8 +71,8 @@ detect which channels have signals.
 detected to have a signal on them, changing channels on a periodic
 basis.  The band is scanned as needed to detect which channels have
 signals.  
-**Min RSSI**:  Enter the minimum-RSSI value for montior (and scan
-functions).  Channels with RSSI (signal strength) levels above this
+**Min RSSI**:  Enter the minimum-RSSI value for monitor (and scan)
+functions.  Channels with RSSI (signal strength) levels above this
 value are considered to have a signal on them.  
 **Interval**:  Enter the interval value (in seconds) for the automatic
 channel switching of the Monitor-button function.  
@@ -107,7 +107,7 @@ Graph Scan Screen Buttons
 
 **Values**:  Pause the scan and display a dialog showing the numeric
 RSSI values for all the channels.  The channel with the highest RSSI
-value is tuned on the receiver, and selecting a channel on the dialog
+value is selected and tuned on the receiver, and selecting a channel on the dialog
 will tune it on the receiver.  
 **Pause**:  Pause the scan.  The channel with the highest RSSI value is
 indicated on the graph and tuned on the receiver.  Touching bars
