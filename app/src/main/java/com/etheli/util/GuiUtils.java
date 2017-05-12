@@ -1,6 +1,6 @@
 //GuiUtils.java:  GUI-helper classes and utilities.
 //
-//  4/26/2017 -- [ET]
+//   5/8/2017 -- [ET]
 //
 
 package com.etheli.util;
@@ -218,6 +218,23 @@ public class GuiUtils
     try
     {
       return activityObj.getWindowManager().getDefaultDisplay().getWidth();
+    }
+    catch(Exception ex)
+    {
+    }
+    return 0;
+  }
+
+  /**
+   * Returns the current height of the display.
+   * @param activityObj Activity object to use for 'getWindowManager()' call.
+   * @return The current width of the display, or 0 if error.
+   */
+  public static int getDisplayHeightValue(Activity activityObj)
+  {
+    try
+    {
+      return activityObj.getWindowManager().getDefaultDisplay().getHeight();
     }
     catch(Exception ex)
     {

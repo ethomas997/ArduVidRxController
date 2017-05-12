@@ -1,6 +1,6 @@
 //BluetoothSerialService.java:  Bluetooth communications manager.
 //
-//  4/28/2017 -- [ET]  File modified from BlueTerm project.
+//  5/11/2017 -- [ET]  File modified from BlueTerm project.
 
 /*
  * Copyright (C) 2009 The Android Open Source Project
@@ -44,7 +44,7 @@ import android.util.Log;
  * incoming connections, a thread for connecting with a device, and a
  * thread for performing data transmissions when connected.
  */
-public class BluetoothSerialService {
+public class BluetoothSerialService implements SerialWriterInterface {
     // Debugging
     private static final String TAG = "BluetoothSerialService";
     private static final boolean D = false;
@@ -67,7 +67,8 @@ public class BluetoothSerialService {
 
     private DataWriteReceiver mDataWriteReceiverObj;
     private Activity mParentActivityObj;
-    private static final Object destinationThreadSyncObj = new Object();
+    private Runnable mConnectionStopActionObj = null;
+    private final Object mDestinationThreadSyncObj = new Object();
 
     // Constants that indicate the current connection state
     public static final int STATE_NONE = 0;       // we're doing nothing
@@ -109,7 +110,7 @@ public class BluetoothSerialService {
      */
     public void setDestinationObjects(Activity parentActObj, Handler handlerObj,
                                                              DataWriteReceiver dataWriteRecObj) {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             mParentActivityObj = parentActObj;
             mHandler = handlerObj;
             mDataWriteReceiverObj = dataWriteRecObj;
@@ -123,7 +124,7 @@ public class BluetoothSerialService {
      * @param dataWriteRecObj Object that will receive data directly from the serial channel.
      */
     public void clearDestinationObjects(Handler handlerObj, DataWriteReceiver dataWriteRecObj) {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             if(handlerObj == mHandler)
                 mHandler = null;
             if(dataWriteRecObj == mDataWriteReceiverObj)
@@ -136,7 +137,7 @@ public class BluetoothSerialService {
      * @return true if the destination objects for the service have been cleared.
      */
     public boolean areDestinationObjectsClear() {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             return (mHandler == null && mDataWriteReceiverObj == null);
         }
     }
@@ -146,7 +147,7 @@ public class BluetoothSerialService {
      * @return The UI Activity Context.
      */
     private Activity getParentActivityObj() {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             return mParentActivityObj;
         }
     }
@@ -160,7 +161,7 @@ public class BluetoothSerialService {
      * @return A Message object, or null if the destination handler is not setup.
      */
     private Message obtainMHandlerMessage(int what, int arg1, int arg2, Object obj) {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             if(mHandler == null)
                 return null;
             return mHandler.obtainMessage(what,arg1,arg2,obj);
@@ -175,7 +176,7 @@ public class BluetoothSerialService {
      * @return A Message object, or null if the destination handler is not setup.
      */
     private Message obtainMHandlerMessage(int what, int arg1, int arg2) {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             if(mHandler == null)
                 return null;
             return mHandler.obtainMessage(what,arg1,arg2);
@@ -188,7 +189,7 @@ public class BluetoothSerialService {
      * @return A Message object, or null if the destination handler is not setup.
      */
     private Message obtainMHandlerMessage(int what) {
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             if(mHandler == null)
                 return null;
             return mHandler.obtainMessage(what);
@@ -201,7 +202,7 @@ public class BluetoothSerialService {
      */
     private void sendMHandlerMessage(Message msgObj) {
         final Handler handlerObj;
-        synchronized(destinationThreadSyncObj) {
+        synchronized(mDestinationThreadSyncObj) {
             handlerObj = mHandler;
         }
         if(handlerObj != null)
@@ -227,10 +228,31 @@ public class BluetoothSerialService {
                             BluetoothSerialService.this.stop(); // then stop service
                     }
                     catch(Exception ex) {
-                        ex.printStackTrace();
+                        Log.e(TAG, "Exception in 'stopIfDestinationObjsStayClear()'", ex);
                     }
                 }
             }).start();
+        }
+    }
+
+    /**
+     * Sets up an action to be taken when the connection is stopped.
+     * @param actionObj action object, or null for no action.
+     */
+    public void setConnectionStopActionObj(Runnable actionObj) {
+        mConnectionStopActionObj = actionObj;
+    }
+
+    /**
+     * Invokes the action to be taken when the connection is stopped (if any).
+     */
+    private void invokeConnectionStopAction() {
+        try {
+            if(mConnectionStopActionObj != null)
+                mConnectionStopActionObj.run();
+        }
+        catch(Exception ex) {
+            Log.e(TAG, "Exception in 'invokeConnectionStopAction()'", ex);
         }
     }
 
@@ -389,6 +411,13 @@ public class BluetoothSerialService {
     }
 
     /**
+     * Returns true if the current state is 'connected'.
+     */
+    public boolean isConnected() {
+        return (mState == STATE_CONNECTED);
+    }
+
+    /**
      * Set the current state of the connection.
      * @param state  An integer defining the current connection state
      */
@@ -412,7 +441,8 @@ public class BluetoothSerialService {
     }
 
     /**
-     * Return the current connection state. */
+     * Return the current connection state.
+     */
     public synchronized int getState() {
         return mState;
     }
@@ -481,6 +511,8 @@ public class BluetoothSerialService {
     public synchronized void stop() {
         if (D) Log.d(TAG, "stop");
 
+        if(mState == STATE_CONNECTED)            //if going from connected to disconnected
+            invokeConnectionStopAction();        // then invoke closing action (if setup)
 
         if (mConnectThread != null) {
         	mConnectThread.cancel();
@@ -671,7 +703,7 @@ public class BluetoothSerialService {
                     // Read from the InputStream
                     bytes = mmInStream.read(buffer);
 
-                    synchronized(destinationThreadSyncObj) {
+                    synchronized(mDestinationThreadSyncObj) {
                         if(mDataWriteReceiverObj != null)
                             mDataWriteReceiverObj.write(buffer, bytes);
                     }

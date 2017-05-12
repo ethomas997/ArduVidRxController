@@ -1,6 +1,6 @@
 //MainActivity.java:  Defines the main activity for the ArduVidRx Controller.
 //
-//  4/28/2017 -- [ET]
+//   5/7/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -74,6 +74,8 @@ public class MainActivity extends Activity
       programResourcesObj.setVidReceiverManagerObj(vidReceiverManagerObj);
       programResourcesObj.setFrequencyTableObj(videoFrequencyTableObj);
       setupTerminalStartupAction();    //setup startup action for terminal
+                                       //setup action to be invoked when connection stopped:
+      bluetoothSerialServiceObj.setConnectionStopActionObj(bluetoothConnStopActionObj);
     }
     else if(!programResourcesObj.isTerminalActive())  //if not resuming after terminal activity
       ensureConnectionClosed();             //make sure connection not stuck
@@ -279,12 +281,10 @@ public class MainActivity extends Activity
    */
   private void ensureConnectionClosed()
   {
-    ProgramResources progResObj = null;
     try
     {
-      progResObj = ProgramResources.getProgramResourcesObj();
       final VidReceiverManager mgrObj;
-      if((mgrObj=progResObj.getVidReceiverManagerObj()) != null)
+      if((mgrObj=ProgramResources.getProgramResourcesObj().getVidReceiverManagerObj()) != null)
         mgrObj.stopManager();
     }
     catch(Exception ex)
@@ -294,8 +294,11 @@ public class MainActivity extends Activity
     try
     {
       final BluetoothSerialService serviceObj;
-      if((serviceObj=progResObj.getBluetoothSerialServiceObj()) != null)
+      if((serviceObj=
+               ProgramResources.getProgramResourcesObj().getBluetoothSerialServiceObj()) != null)
+      {
         serviceObj.doDisconnectDeviceAction();
+      }
     }
     catch(Exception ex)
     {  //some kind of exception error; log it
@@ -438,19 +441,41 @@ public class MainActivity extends Activity
   //Receiver that gets data directly from the BluetoothService
   private final DataWriteReceiver bluetoothWriteRecObj =
           new DataWriteReceiver()
-          {
-            @Override
-            public void write(byte[] buffer, int length)
             {
-              try
+              @Override
+              public void write(byte[] buffer, int length)
               {
-                if(vidReceiverManagerObj != null)
-                  vidReceiverManagerObj.storeReceivedChars(buffer,length);
+                try
+                {
+                  if(vidReceiverManagerObj != null)
+                    vidReceiverManagerObj.storeReceivedChars(buffer,length);
+                }
+                catch(Exception ex)
+                {  //some kind of exception error; log it
+                  Log.e(LOG_TAG, "Exception in bluetoothWriteRecObj.handleMessage()", ex);
+                }
               }
-              catch(Exception ex)
-              {  //some kind of exception error; log it
-                Log.e(LOG_TAG, "Exception in bluetoothWriteRecObj.handleMessage()", ex);
-              }
+            };
+
+  //Action to be invoked when bluetooth connection is stopped.  The
+  // receiver-update worker is paused and the receiver-serial echo
+  // is enabled.
+  private static final Runnable bluetoothConnStopActionObj =
+      new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            final VidReceiverManager vidRecMgrObj =
+                            ProgramResources.getProgramResourcesObj().getVidReceiverManagerObj();
+            if(vidRecMgrObj != null && vidRecMgrObj.isReceiverSerialConnected())
+            {  //receiver connection is active; leave receiver set to echo on
+              if(vidRecMgrObj.isReceiverUpdateWorkerPaused())
+                vidRecMgrObj.pauseReceiverUpdateWorker();    //make sure worker paused
+              if(!vidRecMgrObj.isMonitorModeActive())           //if monitor mode not active then
+                vidRecMgrObj.outputReceiverEchoCommand(true);   //enable serial echo
+                        // (if monitor mode active then don't disturb it)
             }
-          };
+          }
+        };
 }

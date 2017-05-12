@@ -1,6 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-gb" lang="en-gb"><head>
 
+
   <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
   <meta http-equiv="content-style-type" content="text/css" /><title>ArduVidRx Firmware</title>
   <meta content="Eric Thomas" name="author" /></head><body alink="#000099" bgcolor="#ccccff" link="#000099" text="#000000" vlink="#990099">
@@ -78,8 +79,7 @@ detect which channels have signals.<br />
 <b>Monitor</b>:&nbsp; Automatically tune the receiver through the channels detected to have
 a signal on them, changing channels on a periodic basis.&nbsp; The band is scanned as needed to detect which
 channels have signals.<br />
-<b>Min RSSI</b>:&nbsp; Enter the minimum-RSSI value for monitor (and scan) functions.&nbsp; Channels with RSSI (signal strength) levels
-above this value are considered to have a signal on them.<br />
+<b>List</b>:&nbsp; Display the "Select Monitor/Scan Channels" dialog (<a href="#list">see below</a>).<br />
 <b>Interval</b>:&nbsp; Enter the interval value (in seconds) for the automatic channel switching of the Monitor-button function.</big><br />
 
 
@@ -98,11 +98,9 @@ above this value are considered to have a signal on them.<br />
 
 <big>
 <b>Terminal</b>:&nbsp; Enter Terminal mode, in which CLI commands may be executed.<br />
-<b>Disconnect</b>:&nbsp; Closes the Bluetooth connection to the receiver.<br />
+<b>Disconnect</b>:&nbsp; Close the Bluetooth connection to the receiver.<br />
 </big>
-<a name="graphscan" />
-<h2>Graph Scan Screen Buttons</h2>
-
+<a name="graphscan"></a><h2>Graph Scan Screen Buttons</h2>
 <big>
 <b>Values</b>:&nbsp; Pause the scan and display a dialog showing the
 numeric RSSI values for all the channels.&nbsp; The channel with the
@@ -112,7 +110,21 @@ the dialog will tune it on the receiver.<br />
 Touching bars displayed on the graph will tune the receiver to the
 associated channel (and show channel / RSSI information below the
 graph).<br />
-<b>Close</b>:&nbsp; Close the graph and return to the Operation Screen.<br /><br /><br />
+<b>Close</b>:&nbsp; Close the graph and return to the Operation Screen.<br />
+</big>
+<h2><a name="list"></a>Monitor/Scan Channels List</h2>
+<big>
+The 'List' button will display a dialog containing frequency and "preset"
+items that may selected to populate the monitor/scan-channels list.&nbsp; If
+the list is not empty then only the channels in the list will be scanned and
+displayed by the monitor ("Next Ch", "Prev Ch", "Monitor", "Rescan" buttons),
+channel-scan ("Chan Scan" button) and auto-tune ("Auto Tune" button) functions.
+&nbsp; If the list is empty then all channels will be scanned.&nbsp; The
+"preset" items (at the bottom) may be used to select their associated sets
+of frequencies.&nbsp; Pressing the "Clear" button will deselect all items.<br />
+<br />
+</big>
+<big>
 Check out the ArduVidRx home page:&nbsp; <a href="http://www.etheli.com/ArduVidRx" target="_blank">http://www.etheli.com/ArduVidRx</a><br />
 <br />
 <hr /><br />

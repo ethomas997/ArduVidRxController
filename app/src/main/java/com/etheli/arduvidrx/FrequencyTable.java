@@ -1,6 +1,6 @@
 //FrequencyTable.java:  Video-frequencies table and utilities.
 //
-//  1/24/2017 -- [ET]
+//   5/7/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -8,6 +8,7 @@ package com.etheli.arduvidrx;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class FrequencyTable defines the video-frequencies table and utilities.
@@ -176,6 +177,37 @@ public class FrequencyTable
     return null;
   }
 
+  /**
+   * Converts given string of space or comma-separated numeric values to
+   * a list of 'Short' objects.
+   * @param str string containing space or comma-separated numeric values,
+   * or null or an empty string for none.
+   * @return A list of 'Short' objects, or null if a parsing error occurred.
+   */
+  public static List<Short> convStringToShortsList(String str)
+  {
+    try
+    {
+      final ArrayList<Short> retList = new ArrayList<Short>();
+      final int strLen = (str != null) ? str.length() : 0;
+      int ePos, sPos = 0;
+      while(sPos < strLen)
+      {
+        while((str.charAt(sPos) == ' ' || str.charAt(sPos) == ',') && ++sPos < strLen);
+        ePos = sPos;
+        while(++ePos < strLen && str.charAt(ePos) != ' ');
+        if(sPos < ePos)
+          retList.add(Short.parseShort(str.substring(sPos,ePos)));
+        sPos = ePos + 1;
+      }
+      return retList;
+    }
+    catch(NumberFormatException ex)
+    {
+      return null;
+    }
+  }
+
 
   /**
    * Class FrequencyBand defines a band of frequencies values (channels).
@@ -257,8 +289,9 @@ public class FrequencyTable
      */
     protected final void updateDisplayString()
     {
-      displayString = ((channelCodeStr != null) ? channelCodeStr : "") + "    " + frequencyVal +
-                            ((displayRssiValue >= 0) ? ("            " + displayRssiValue) : "");
+      displayString = ((channelCodeStr != null) ? channelCodeStr : "") +
+                                     ((frequencyVal > (short)0) ? ("    " + frequencyVal) : "") +
+                     ((displayRssiValue >= (short)0) ? ("            " + displayRssiValue) : "");
     }
 
     /**

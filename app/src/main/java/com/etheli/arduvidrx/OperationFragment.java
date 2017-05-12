@@ -1,13 +1,16 @@
 //OperationFragment.java:  Defines the main operations screen and functions.
 //
-//  4/28/2017 -- [ET]
+//  5/10/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
 
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -363,8 +366,7 @@ public class OperationFragment extends Fragment
       case R.id.monRescanButton:       //send command to (re)scab
         vidReceiverManagerObj.sendMonRescanCmdToReceiver();
         break;
-      case R.id.monMinRssiButton:      //edit/send minimum-RSSI-for-scans value
-      case R.id.scanMinRssiButton:
+      case R.id.scanMinRssiButton:     //edit/send minimum-RSSI-for-scans value
         DialogUtils.showEditNumberDialogFragment(getActivity(),R.string.minrssi_dialog_title,
                                                vidReceiverManagerObj.getMinRssiForScansValue(),2,
             new DialogUtils.DialogItemSelectedListener()
@@ -375,6 +377,9 @@ public class OperationFragment extends Fragment
                   vidReceiverManagerObj.sendMinRssiValToReceiver(val);
                 }
               });
+        break;
+      case R.id.monListFreqsButton:    //select channels for monitor/scan list
+        showMonScanListChoiceDialog(false);
         break;
       case R.id.intervalButton:        //edit/send monitor-interval value
         DialogUtils.showEditNumberDialogFragment(getActivity(),R.string.monintvl_dialog_title,
@@ -505,6 +510,56 @@ public class OperationFragment extends Fragment
   }
 
   /**
+   * Shows a monitor/scan-list multi-choice dialog and handles the response.
+   * @param clearAllFlag true to clear all selections on entry.
+   */
+  private void showMonScanListChoiceDialog(boolean clearAllFlag)
+  {
+    try
+    {
+      final ScanListManager scanListMgrObj =          //create scan-list manager
+                          new ScanListManager(videoFrequencyTableObj.getFreqChannelItemsArray());
+              //set selected freqs via current set from receiver:
+      scanListMgrObj.setSelectedFreqsListStr(vidReceiverManagerObj.getMonScanListString());
+              //get array of flags corresponding to selected frequencies:
+      final boolean [] selFlagsArr = scanListMgrObj.getItemsSelectedArr(clearAllFlag);
+              //show multi-choice dialog with frequencies:
+      DialogUtils.showMultiChoiceDialogFragment(getActivity(),R.string.scanlist_dialog_title,
+                                          scanListMgrObj.getFreqChannelSelItemsArr(),selFlagsArr,
+               R.string.alert_dialog_cancel,R.string.alert_dialog_ok,R.string.alert_dialog_clear,
+                     Dialog.BUTTON_NEUTRAL, new DialogUtils.MultiChoiceClickUpdater(selFlagsArr),
+          new DialogInterface.OnClickListener()
+            {                //listener invoked when dialog is closed
+              @Override
+              public void onClick(DialogInterface dialogObj, int which)
+              {
+                try
+                {                 // ("clear" button event usually won't reach here)
+                  if(which == DialogInterface.BUTTON_NEUTRAL)
+                  {  //'Clear' button was pressed; redisplay dialog with all items deselected
+                    showMonScanListChoiceDialog(true);
+                  }
+                  else if(which == DialogInterface.BUTTON_POSITIVE)
+                  {  //'OK' button was pressed
+                    scanListMgrObj.setItemsSelectedArr(selFlagsArr);   //update selected channels
+                    vidReceiverManagerObj.sendMonScanListToReceiver(   //send set to receiver
+                                                       scanListMgrObj.getSelectedFreqsListStr());
+                  }
+                }
+                catch(Exception ex)
+                {  //some kind of exception error; log it
+                  Log.e(LOG_TAG, "Exception in 'showMonScanListChoiceDialog()' response", ex);
+                }
+              }
+            });
+    }
+    catch(Exception ex)
+    {  //some kind of exception error; log it
+      Log.e(LOG_TAG, "Exception in 'showMonScanListChoiceDialog()' setup", ex);
+    }
+  }
+
+  /**
    * Sets the value for the 'version' text field.
    * @param str text to set.
    */
@@ -575,58 +630,76 @@ public class OperationFragment extends Fragment
     @Override
     public void handleMessage(Message msgObj)
     {
-      switch(msgObj.what)
+      try
       {
-        case ProgramResources.MAINGUI_UPD_VERSION:         //version information
-          if(msgObj.obj instanceof String)
-            setVersionTextViewStr((String)msgObj.obj);
-          break;
-        case ProgramResources.MAINGUI_UPD_CHANRSSI:        //channel and RSSI values
-          final int freqVal;
-          if((freqVal=msgObj.arg1) > 0)
-          {  //frequency value OK to display
-            final FrequencyTable.FreqChannelItem itemObj;
-            String codeStr;         //get channel-code string for current channel (if any)
-            if((itemObj=videoChannelTrackerObj.getCurFreqChannelItemObj()) != null &&
-                                                            (short)freqVal == itemObj.frequencyVal)
-            {  //frequency-channel item available and frequency matches
-              codeStr = "  " + itemObj.channelCodeStr;       //show channel-code string
-            }
-            else     //no channel-code string for frequency
-              codeStr = "";
+        switch(msgObj.what)
+        {
+          case ProgramResources.MAINGUI_UPD_VERSION:       //version information
+            if(msgObj.obj instanceof String)
+              setVersionTextViewStr((String)msgObj.obj);
+            break;
+          case ProgramResources.MAINGUI_UPD_CHANRSSI:      //channel and RSSI values
+            final int freqVal;
+            if((freqVal=msgObj.arg1) > 0)
+            {  //frequency value OK to display
+              final FrequencyTable.FreqChannelItem itemObj;
+              String codeStr;         //get channel-code string for current channel (if any)
+              if((itemObj=videoChannelTrackerObj.getCurFreqChannelItemObj()) != null &&
+                                                              (short)freqVal == itemObj.frequencyVal)
+              {  //frequency-channel item available and frequency matches
+                codeStr = "  " + itemObj.channelCodeStr;        //show channel-code string
+              }
+              else      //no channel-code string for frequency
+                codeStr = "";
                              //if message 'obj' is a string then append it:
-            final String dispStr = (msgObj.obj instanceof String) ? ("  " + msgObj.obj) : "";
-            setFreqCodeTextViewStr("Freq:  " + freqVal + " MHz" + codeStr + dispStr);
-          }
-          setRssiDisplayValue(msgObj.arg2);
-          break;
-        case ProgramResources.MAINGUI_UPD_CHANTEXT:        //set value for freqCodeTextView
-          if(msgObj.obj instanceof String)
-            setFreqCodeTextViewStr((String)msgObj.obj);
-          break;
-        case ProgramResources.MAINGUI_UPD_POPUPMSG:        //show popup message
-          if(msgObj.obj instanceof String)
-            GuiUtils.showPopupMessage(getActivity(),(String)msgObj.obj);
-          break;
-        case ProgramResources.MAINGUI_UPD_VRMGRSTARTED:    //video receiver started
-          break;
-        case ProgramResources.MAINGUI_UPD_SCANBEGIN:       //video-receiver scanning started
+              final String dispStr = (msgObj.obj instanceof String) ? ("  " + msgObj.obj) : "";
+              setFreqCodeTextViewStr("Freq:  " + freqVal + " MHz" + codeStr + dispStr);
+            }
+            setRssiDisplayValue(msgObj.arg2);
+            break;
+          case ProgramResources.MAINGUI_UPD_CHANTEXT:      //set value for freqCodeTextView
+            if(msgObj.obj instanceof String)
+              setFreqCodeTextViewStr((String)msgObj.obj);
+            break;
+          case ProgramResources.MAINGUI_UPD_POPUPMSG:      //show popup message
+            if(msgObj.obj instanceof String)
+              GuiUtils.showPopupMessage(getActivity(),(String)msgObj.obj);
+            break;
+          case ProgramResources.MAINGUI_UPD_VRMGRSTARTED:  //video receiver started
+            if(vidReceiverManagerObj != null)
+            {
+              final String listStr;
+              if((listStr=vidReceiverManagerObj.getMonScanListString()) != null &&
+                                                       !ScanListManager.isScanListEmpty(listStr))
+              {  //monitor-scan-channel list is setup; show popup with frequency values
+                final String msgStr = getString(R.string.scanlist_popup_text) + listStr;
+                GuiUtils.showPopupMessage(getActivity(),msgStr);
+                GuiUtils.showPopupMessage(getActivity(),msgStr);     //repeat for longer duration
+              }
+            }
+            break;
+          case ProgramResources.MAINGUI_UPD_SCANBEGIN:     //video-receiver scanning started
                                                       //disable buttons while scanning:
-          GuiUtils.setViewButtonsEnabledState(getView(),false);
-          setRssiDisplayValue(msgObj.arg2);           //set RSSI display to zero
+            GuiUtils.setViewButtonsEnabledState(getView(),false);
+            setRssiDisplayValue(msgObj.arg2);         //set RSSI display to zero
                                                       //show "Scanning..." text while scanning:
-          setFreqCodeTextViewStr(getString(R.string.scanning_status_text));
-          break;
-        case ProgramResources.MAINGUI_UPD_SCANEND:         //video-receiver scanning finished
-          setFreqCodeTextViewStr("");                 //clear "Scanning..." text
-          GuiUtils.setViewButtonsEnabledState(getView(),true);       //re-enable buttons
-          break;
-        case ProgramResources.MAINGUI_UPD_SELCHANNEL:      //show select-channel choice dialog
-          if(msgObj.obj instanceof String)
-            showSelChanDialogForScanStr((String)msgObj.obj);
-          break;
-        default:                                 //unknown value
-          super.handleMessage(msgObj);           //pass to parent handler
+            setFreqCodeTextViewStr(getString(R.string.scanning_status_text));
+            break;
+          case ProgramResources.MAINGUI_UPD_SCANEND:       //video-receiver scanning finished
+            setFreqCodeTextViewStr("");               //clear "Scanning..." text
+            GuiUtils.setViewButtonsEnabledState(getView(),true);       //re-enable buttons
+            break;
+          case ProgramResources.MAINGUI_UPD_SELCHANNEL:    //show select-channel choice dialog
+            if(msgObj.obj instanceof String)
+              showSelChanDialogForScanStr((String)msgObj.obj);
+            break;
+          default:                               //unknown value
+            super.handleMessage(msgObj);         //pass to parent handler
+        }
+      }
+      catch(Exception ex)
+      {  //some kind of exception error; log it
+        Log.e(LOG_TAG, "Exception in MainGuiUpdateHandler", ex);
       }
     }
   }

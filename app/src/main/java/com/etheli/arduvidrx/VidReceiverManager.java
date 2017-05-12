@@ -1,6 +1,6 @@
 //VidReceiverManager.java:  Manages command I/O for an ArduVidRx unit.
 //
-//  4/28/2017 -- [ET]
+//  5/11/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx;
@@ -57,6 +57,7 @@ public class VidReceiverManager
   public static final String VIDRX_TUNE_PRESTR = "T";
   public static final String VIDRX_MINRSSI_PRESTR = "XM";
   public static final String VIDRX_MONINTVL_PRESTR = "XI";
+  public static final String VIDRX_SCANLIST_PRESTR = "L";
 
   private static final int VIDCMD_TERMINATE_MSGC = 0;      //codes for command messages
   private static final int VIDCMD_TUNECODE_MSGC = 1;       // via CommandHandlerThread
@@ -74,8 +75,9 @@ public class VidReceiverManager
   private static final int VIDCMD_MONRESCAN_MSGC = 13;
   private static final int VIDCMD_SETMINRSSI_MSGC = 14;
   private static final int VIDCMD_SETMONINTVL_MSGC = 15;
-  private static final int VIDCMD_CHANSCAN_MSGC = 16;
-  private static final int VIDCMD_FULLSCAN_MSGC = 17;
+  private static final int VIDCMD_SETSCANLIST_MSGC = 16;
+  private static final int VIDCMD_CHANSCAN_MSGC = 17;
+  private static final int VIDCMD_FULLSCAN_MSGC = 18;
 
   private static final String SCANNING_CHECK_STR = " Scanning";
   private static final int SCANNING_CHKSTR_LEN = SCANNING_CHECK_STR.length();
@@ -83,7 +85,7 @@ public class VidReceiverManager
   private boolean vidrxScanningInProgressFlag = false;     //true while receiver scanning
 
   private final Activity parentActivityObj;
-  private final BluetoothSerialService bluetoothSerialServiceObj;
+  private final SerialWriterInterface serialServiceWriterObj;
   private final StringBuffer receivedCharsBuffer = new StringBuffer();
   private final Vector<String> receivedLinesList = new Vector<String>();
   private char firstReceivedCharacter = '\0';
@@ -96,17 +98,18 @@ public class VidReceiverManager
   private boolean monitorModeActiveFlag = false;
   private int minRssiForScansValue = 30;
   private int monitorIntervalValue = 5;
+  private String monitorScanListString = "";
 
 
   /**
    * Creates an ArduVidRx manager.
    * @param activityObj parent object for UI Activity Context.
-   * @param serviceObj BluetoothSerialService object to use for sending commands.
+   * @param sWriterObj SerialWriterInterface object to use for sending commands.
    */
-  public VidReceiverManager(Activity activityObj, BluetoothSerialService serviceObj)
+  public VidReceiverManager(Activity activityObj, SerialWriterInterface sWriterObj)
   {
     parentActivityObj = activityObj;
-    bluetoothSerialServiceObj = serviceObj;
+    serialServiceWriterObj = sWriterObj;
   }
 
   /**
@@ -257,6 +260,7 @@ public class VidReceiverManager
     }
     fetchMinRssiValFromReceiver();          //get/save min-RSSI-for-scans value from receiver
     fetchMonIntvlValFromReceiver();         //get/save monitor-interval value from receiver
+    fetchMonScanListStrFromReceiver();      //get/save monitor/scan list from receiver
     try { Thread.sleep(UPDWKR_PERIODIC_DELAYMS); }
     catch(InterruptedException ex) {}       //do one interval delay before starting worker
     if(!recUpdWrkrPausedRequestedFlag)
@@ -412,6 +416,18 @@ public class VidReceiverManager
   }
 
   /**
+   * Sends a new monitor/scan list to the receiver.
+   * @param listStr new monitor/scan list string.
+   */
+  public void sendMonScanListToReceiver(String listStr)
+  {
+    if(isReceiverSerialConnected())
+      commandHandlerThreadObj.sendMessage(VIDCMD_SETSCANLIST_MSGC,listStr);
+    else                                    //if not connected (test mode) then
+      monitorScanListString = listStr;      //set monitor/scan list directly
+  }
+
+  /**
    * Starts the scan-and-select-channel function.  A scan is performed,
    * and then the result is shown (with RSSI values) in a select-channel
    * dialog.
@@ -471,7 +487,7 @@ public class VidReceiverManager
    */
   public boolean isReceiverUpdateWorkerPaused()
   {
-    return (receiverUpdateWorkerObj != null) ? receiverUpdateWorkerObj.isThreadPaused() : false;
+    return (receiverUpdateWorkerObj != null && receiverUpdateWorkerObj.isThreadPaused());
   }
 
   /**
@@ -480,7 +496,7 @@ public class VidReceiverManager
    */
   public boolean isReceiverSerialConnected()
   {
-    return (bluetoothSerialServiceObj.getState() == BluetoothSerialService.STATE_CONNECTED);
+    return (serialServiceWriterObj != null && serialServiceWriterObj.isConnected());
   }
 
   /**
@@ -536,7 +552,7 @@ public class VidReceiverManager
         }
         break;
       case VIDCMD_MONRESCAN_MSGC:       //send (re)scan command
-        doSendScanCommandToReceiver(VIDRX_CHANSCAN_CMD);
+        doSendScanCommandToReceiver(VIDRX_CHANSCAN_CMD,true);
         break;
       case VIDCMD_SETMINRSSI_MSGC:     //send new min-RSSI-for-scans value to receiver
         doSendMinRssiValToReceiver(msgObj.arg1);
@@ -544,10 +560,13 @@ public class VidReceiverManager
       case VIDCMD_SETMONINTVL_MSGC:    //send new monitor-interval value to receiver
         doSendMonIntvlValToReceiver(msgObj.arg1);
         break;
-      case VIDCMD_CHANSCAN_MSGC:       //do channel-scan and select channel
+      case VIDCMD_SETSCANLIST_MSGC:    //send new monitor/scan list to receiver
+        doSendMonScanListToReceiver(msgObj.obj);
+        break;
+      case VIDCMD_CHANSCAN_MSGC:       //do channel-scan and show select-channel dialog
         doScanSelectChanFunction(VIDRX_CHANSCAN_CMD);
         break;
-      case VIDCMD_FULLSCAN_MSGC:       //do full-scan and select channel
+      case VIDCMD_FULLSCAN_MSGC:       //do full-scan and show select-channel dialog
         doScanSelectChanFunction(VIDRX_FULLSCAN_CMD);
         break;
       case VIDCMD_TERMINATE_MSGC:      //terminate thread/looper for command handler
@@ -634,7 +653,7 @@ public class VidReceiverManager
    * receiver and checking if the receiver has started scanning.
    * @param cmdBuff command to be sent.
    */
-  public void doSendNextPrevMonToReceiver(byte [] cmdBuff)
+  private void doSendNextPrevMonToReceiver(byte [] cmdBuff)
   {
     final boolean resFlag = pauseReceiverUpdateWorker();
     if(outputCmdNoResponse(cmdBuff) != null)     //send 'N', 'P' or 'M' command
@@ -651,12 +670,15 @@ public class VidReceiverManager
    * receiver and checking if the receiver has started scanning.
    * @param cmdBuff command to be sent; channel-scan ('S') or full-scan
    * command ('F').
+   * @param restoreMonModeFlag true to check if monitor mode is active
+   * before scan and restore it after scan if so.
    * @return The scan-data results string returned by the receiver, or null
    * if no response received.
    */
-  public String doSendScanCommandToReceiver(byte [] cmdBuff)
+  private String doSendScanCommandToReceiver(byte [] cmdBuff, boolean restoreMonModeFlag)
   {
     final boolean resFlag = pauseReceiverUpdateWorker();
+    final boolean monFlag = restoreMonModeFlag && monitorModeActiveFlag;  //true = restore mode
     String retStr = null;
     if(outputCmdNoResponse(cmdBuff) != null)     //send 'S' or 'F' command:
     {  //initial newline response received OK
@@ -664,6 +686,14 @@ public class VidReceiverManager
         processReceiverScanning();               //wait for scanning to finish
       retStr = getNextReceivedLine(RESP_WAIT_TIMEMS);      //get scan-data results
 //      Log.d(LOG_TAG, "doSendScanCommandToReceiver received:  " + retStr);
+      if(monFlag)
+      {  //monitor mode was active and should be restored
+        if(outputCmdNoResponse(VIDRX_MONITOR_CMD) != null)
+        {  //initial newline response received OK
+          if(peekFirstReceivedChar() == ' ')          //if receiver is scanning then
+            processReceiverScanning();                //wait for scanning to finish
+        }
+      }
     }
     if(resFlag)                        //if was not already paused on entry
       resumeReceiverUpdateWorker();    // then resume worker thread
@@ -677,9 +707,9 @@ public class VidReceiverManager
    * @param cmdBuff command to be sent; channel-scan ('S') or full-scan
    * command ('F').
    */
-  public void doScanSelectChanFunction(byte [] cmdBuff)
+  private void doScanSelectChanFunction(byte [] cmdBuff)
   {
-    final String scanStr = doSendScanCommandToReceiver(cmdBuff);
+    final String scanStr = doSendScanCommandToReceiver(cmdBuff,false);
     if(mainGuiUpdateHandlerObj != null)
     {  //handler OK; send entries list to OperationFragment for choice dialog
       mainGuiUpdateHandlerObj.obtainMessage(
@@ -736,13 +766,51 @@ public class VidReceiverManager
   }
 
   /**
+   * Performs the work of sending a new monitor/scan list to the receiver.
+   * @param listStr monitor/scan list string.
+   */
+  private void doSendMonScanListToReceiver(Object listStr)
+  {
+    if(!(listStr instanceof String))
+      return;
+    final boolean resFlag = pauseReceiverUpdateWorker();
+//    Log.d(LOG_TAG, "Sending:  " + VIDRX_SCANLIST_PRESTR + listStr);
+              //send "L..." command, fetch response (expected response is # of frequencies):
+    String respStr = outputCmdRecvResponse(
+                                    (VIDRX_SCANLIST_PRESTR + listStr + VIDRX_CR_STR).getBytes());
+    if(respStr != null && (respStr=respStr.trim()).length() > 0 &&
+                                                           !Character.isDigit(respStr.charAt(0)))
+    {  //response not empty and does not being with a digit (take as error message)
+      final String errStr = "List error:  " + respStr;
+      Log.e(LOG_TAG,errStr);                          //log error message
+      if(mainGuiUpdateHandlerObj != null)
+      {
+        mainGuiUpdateHandlerObj.obtainMessage(        //show error with popup message
+                                  ProgramResources.MAINGUI_UPD_POPUPMSG,errStr).sendToTarget();
+      }
+    }
+    fetchMonScanListStrFromReceiver();           //fetch value from receiver
+    if(!isEqualToMonScanListStr(listStr))        //check given value vs fetched
+      Log.e(LOG_TAG, "Mismatch confirming monitor/scan list sent to receiver");
+    if(resFlag)                        //if was not already paused on entry
+      resumeReceiverUpdateWorker();    // then resume worker thread
+  }
+
+  /**
    * Sends the reset command to the receiver.  This method should only be
    * used while the receiver worker is stopped or paused.
    */
   public void outputReceiverResetCommand()
   {
-    clearBuffer();
-    bluetoothSerialServiceObj.write(VIDRX_RESET_CMD);
+    try
+    {
+      clearBuffer();
+      serialServiceWriterObj.write(VIDRX_RESET_CMD);
+    }
+    catch(Exception ex)
+    {
+      Log.e(LOG_TAG, "Error sending reset command to receiver", ex);
+    }
   }
 
   /**
@@ -791,6 +859,15 @@ public class VidReceiverManager
   public String outputQueryVersionCmd()
   {
     return outputCmdNoResponse(VIDRX_VERSION_CMD);
+  }
+
+  /**
+   * Determines if monitor mode is active.
+   * @return true if monitor mode is active.
+   */
+  public boolean isMonitorModeActive()
+  {
+    return monitorModeActiveFlag;
   }
 
   /**
@@ -848,6 +925,55 @@ public class VidReceiverManager
   }
 
   /**
+   * Fetches and saves the monitor/scan list from the receiver.
+   * This method should only be used while the receiver worker is
+   * stopped or paused.
+   */
+  public void fetchMonScanListStrFromReceiver()
+  {
+    try
+    {         //send command, receive, check and save string response
+      String respStr = outputCmdRecvResponse((VIDRX_SCANLIST_PRESTR+VIDRX_CR_STR).getBytes());
+//      Log.d(LOG_TAG, "Received (L):  " + respStr);
+      if(respStr != null && respStr.trim().length() > 0)
+      {  //string contains data
+        respStr = respStr.replace(',',' ');           //change commas to spaces
+                   //check that data can be parsed as list of numeric values:
+        if(FrequencyTable.convStringToShortsList(respStr) != null)
+          monitorScanListString = respStr;            //save response data
+        else
+          Log.e(LOG_TAG, "Unable to parse monitor/scan list fetched from receiver:  " + respStr);
+      }
+      else
+        monitorScanListString = "";
+    }
+    catch(Exception ex)
+    {
+      Log.e(LOG_TAG, "Error fetching monitor/scan list from receiver", ex);
+    }
+  }
+
+  /**
+   * Returns the monitor/scan list string.
+   * @return The monitor/scan list string.
+   */
+  public String getMonScanListString()
+  {
+    return monitorScanListString;
+  }
+
+  /**
+   * Checks if the given string is equal to the current monitor/scan list string.
+   * @param strObj string to check.
+   * @return true if the given string is equal to the current monitor/scan list string.
+   */
+  public boolean isEqualToMonScanListStr(Object strObj)
+  {
+    return (strObj instanceof String && monitorScanListString != null &&
+                                   ((String)strObj).trim().equals(monitorScanListString.trim()));
+  }
+
+  /**
    * Transmits a carriage-return character to the receiver.  (Does not
    * attempt to receive any "echo" characters.)
    */
@@ -855,7 +981,7 @@ public class VidReceiverManager
   {
     try
     {
-      bluetoothSerialServiceObj.write(VIDRX_CR_ARR);
+      serialServiceWriterObj.write(VIDRX_CR_ARR);
     }
     catch(Exception ex)
     {
@@ -927,7 +1053,7 @@ public class VidReceiverManager
     try
     {
       clearBuffer();
-      bluetoothSerialServiceObj.write(cmdBuff);
+      serialServiceWriterObj.write(cmdBuff);
       return getNextReceivedLine(RESP_WAIT_TIMEMS);
     }
     catch(Exception ex)

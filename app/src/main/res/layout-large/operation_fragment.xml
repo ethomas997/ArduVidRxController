@@ -258,10 +258,10 @@
                         android:minWidth="115dp"
                         android:layout_margin="1sp" />
                     <Button
-                        android:id="@+id/monMinRssiButton"
+                        android:id="@+id/monListFreqsButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/minrssi_button_name"
+                        android:text="@string/list_button_name"
                         android:minWidth="115dp"
                         android:layout_margin="1sp" />
                     <Button

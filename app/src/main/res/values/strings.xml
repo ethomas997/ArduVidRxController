@@ -2,7 +2,7 @@
 <resources>
 
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.65</string>
+    <string name="app_version">0.7</string>
     <string name="about_text">http://www.etheli.com/ArduVidRx</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
@@ -30,6 +30,7 @@
     <string name="minrssi_button_name">Min RSSI</string>
     <string name="monitor_button_name">Monitor</string>
     <string name="interval_button_name">Interval</string>
+    <string name="list_button_name">List</string>
     <string name="rescan_button_name">Rescan</string>
     <string name="chanscan_button_name">Chan Scan</string>
     <string name="fullscan_button_name">Full Scan</string>
@@ -50,6 +51,8 @@
     <string name="freqsel_dialog_title">Enter Frequency</string>
     <string name="minrssi_dialog_title">Set Min RSSI for Scans</string>
     <string name="monintvl_dialog_title">Set Monitor Interval (secs)</string>
+    <string name="scanlist_dialog_title">Select Monitor/Scan Channels</string>
+    <string name="scanlist_popup_text">Using Monitor/Scan List: </string>
     <string name="scanning_status_text">Scanning...</string>
 
     <string name="blueterm_name">BlueTerm</string>
@@ -60,6 +63,7 @@
 	<string name="alert_dialog_ok">OK</string>
 	<string name="alert_dialog_close">Close</string>
 	<string name="alert_dialog_cancel">Cancel</string>
+	<string name="alert_dialog_clear">Clear</string>
 	<string name="alert_dialog_turn_on_bt">This application needs Bluetooth. Do you want to turn it on?</string>
 
 	<string name="msg_connecting">Connecting to device</string>

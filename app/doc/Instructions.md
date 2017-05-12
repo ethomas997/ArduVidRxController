@@ -71,9 +71,8 @@ detect which channels have signals.
 detected to have a signal on them, changing channels on a periodic
 basis.  The band is scanned as needed to detect which channels have
 signals.  
-**Min RSSI**:  Enter the minimum-RSSI value for monitor (and scan)
-functions.  Channels with RSSI (signal strength) levels above this
-value are considered to have a signal on them.  
+**List**:  Display the "Select Monitor/Scan Channels" dialog
+([see below](#list)).  
 **Interval**:  Enter the interval value (in seconds) for the automatic
 channel switching of the Monitor-button function.  
 **Rescan**:  Perform a band scan to detect which channels have
@@ -99,7 +98,7 @@ General Buttons
 
 **Terminal**:  Enter Terminal mode, in which CLI commands may be
 executed.  
-**Disconnect**:  Closes the Bluetooth connection to the receiver.  
+**Disconnect**:  Close the Bluetooth connection to the receiver.  
 
 <a name="graphscan"></a>
 Graph Scan Screen Buttons
@@ -114,6 +113,19 @@ indicated on the graph and tuned on the receiver.  Touching bars
 displayed on the graph will tune the receiver to the associated channel
 (and show channel / RSSI information below the graph).  
 **Close**:  Close the graph and return to the Operation Screen.
+
+<a name="list"></a>
+Monitor/Scan Channels List
+--------------------------
+
+The 'List' button will display a dialog containing frequency and "preset"
+items that may selected to populate the monitor/scan-channels list.  If
+the list is not empty then only the channels in the list will be scanned and
+displayed by the monitor ("Next Ch", "Prev Ch", "Monitor", "Rescan" buttons),
+channel-scan ("Chan Scan" button) and auto-tune ("Auto Tune" button)
+functions.  If the list is empty then all channels will be scanned.  The
+"preset" items (at the bottom) may be used to select their associated sets
+of frequencies.  Pressing the "Clear" button will deselect all items.
 
 
 Check out the ArduVidRx home page: 
