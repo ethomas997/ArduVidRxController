@@ -127,14 +127,38 @@ functions.  If the list is empty then all channels will be scanned.  The
 "preset" items (at the bottom) may be used to select their associated sets
 of frequencies.  Pressing the "Clear" button will deselect all items.
 
-
-Check out the ArduVidRx home page: 
-[http://www.etheli.com/ArduVidRx](http://www.etheli.com/ArduVidRx)
- 
+*The following monitor/scan-list presets are available:*  
+   **A**:  5865 5845 5825 5805 5785 5765 5745 5725  
+   **B**:  5733 5752 5771 5790 5809 5828 5847 5866  
+   **E**:  5705 5685 5665 5645 5885 5905 5925 5945  
+   **F**:  5740 5760 5780 5800 5820 5840 5860 5880  
+   **R**:  5658 5695 5732 5769 5806 5843 5880 5917  
+   **L**:  5362 5399 5436 5473 5510 5547 5584 5621  
+   **IMD5**:  5685 5760 5800 5860 5905  
+   **IMD6**:  5645 5685 5760 5800 5860 5905  
+   **ET5**:  5665 5725 5820 5860 5945  
+   **ET5A**:  5665 5752 5800 5866 5905  
+   **ET5B**:  5665 5752 5800 5865 5905  
+   **ET5C**:  5665 5760 5800 5865 5905  
+   **ETBest6**:  5645 5685 5760 5805 5905 5945  
+   **ET6minus1**:  5645 5685 5760 5905 5945  
 
 * * * * *
 
- Click [here to contact me](http://www.etheli.com/contact/index.html)
- 
- [etheli.com home page](http://www.etheli.com)
+**FPV Frequency Bands and Channels**\
+                  1       2       3       4       5       6       7       8  
+Band F:  5740 5760 5780 5800 5820 5840 5860 5880  (IRC NexWave / Fatshark)  
+Band E:  5705 5685 5665 5645 5885 5905 5925 5945  (Boscam E / DJI)  
+Band B:  5733 5752 5771 5790 5809 5828 5847 5866  (Boscam B)  
+Band A:  5865 5845 5825 5805 5785 5765 5745 5725  (Boscam A / TBS / RC305)  
+Band R:  5658 5695 5732 5769 5806 5843 5880 5917  (Raceband)  
+Band L:  5362 5399 5436 5473 5510 5547 5584 5621  
 
+* * * * *
+
+Check out the ArduVidRx home page: 
+[http://www.etheli.com/ArduVidRx](http://www.etheli.com/ArduVidRx)
+
+Click [here to contact me](http://www.etheli.com/contact/index.html)
+ 
+[etheli.com home page](http://www.etheli.com)
