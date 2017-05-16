@@ -1,9 +1,9 @@
 //SerialWriterInterface.java:  Interface for writing to a serial connection.
 //
-//  5/11/2017 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.util;
 
 /**
  * Interface SerialWriterInterface defines methods for writing to a serial connection.

@@ -23,7 +23,7 @@ import android.view.inputmethod.ExtractedText;
 import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 
-import com.etheli.arduvidrx.DataWriteReceiver;
+import com.etheli.util.DataWriteReceiver;
 import com.etheli.arduvidrx.R;
 
 import java.io.File;

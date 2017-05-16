@@ -3,7 +3,7 @@
 //  4/20/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.app;
 
 import android.app.Fragment;
 import android.content.DialogInterface;
@@ -19,6 +19,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
+import com.etheli.arduvidrx.R;
+import com.etheli.arduvidrx.rec.FrequencyTable;
+import com.etheli.arduvidrx.rec.VidReceiverManager;
 import com.etheli.util.DialogUtils;
 import com.etheli.util.GuiUtils;
 import com.etheli.util.PausableThread;

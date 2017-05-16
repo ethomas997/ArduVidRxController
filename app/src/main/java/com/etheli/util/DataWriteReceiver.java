@@ -1,9 +1,9 @@
 //DataWriteReceiver.java:  Receives data via 'write()' method.
 //
-// 10/22/2016 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.util;
 
 /**
  * Receives data via 'write()' method.

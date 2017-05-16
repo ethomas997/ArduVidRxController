@@ -3,7 +3,7 @@
 //   5/7/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.rec;
 
 import android.util.Log;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.bt;
 
 import java.util.Set;
 

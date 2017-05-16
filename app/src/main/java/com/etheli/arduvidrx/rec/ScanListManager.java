@@ -1,10 +1,10 @@
 //ScanListManager.java:  Manages a list of frequency (channel) values where
 //                       each value may be selected or not-selected.
 //
-//   5/7/2017 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.rec;
 
 import java.util.ArrayList;
 import java.util.List;

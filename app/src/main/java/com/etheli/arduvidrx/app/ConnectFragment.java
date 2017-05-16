@@ -1,9 +1,9 @@
 //ConnectFragment.java:  Defines the initial connection screen and functions.
 //
-//  2/16/2017 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.app;
 
 import android.app.Fragment;
 import android.os.Bundle;
@@ -13,6 +13,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
+import com.etheli.arduvidrx.R;
+import com.etheli.arduvidrx.bt.BluetoothSerialService;
 import com.etheli.util.GuiUtils;
 
 /**

@@ -1,9 +1,9 @@
 //ChannelTracker.java:  Tracks the currently-tuned video-receiver channel.
 //
-//  3/31/2017 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.rec;
 
 /**
  * Class ChannelTracker tracks the currently-tuned video-receiver channel.

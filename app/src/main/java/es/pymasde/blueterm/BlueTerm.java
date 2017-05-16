@@ -34,8 +34,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.etheli.arduvidrx.BluetoothSerialService;
-import com.etheli.arduvidrx.ProgramResources;
+import com.etheli.arduvidrx.bt.BluetoothSerialService;
+import com.etheli.arduvidrx.app.ProgramResources;
 import com.etheli.arduvidrx.R;
 
 import java.io.File;

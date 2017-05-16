@@ -3,13 +3,16 @@
 //  5/11/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.rec;
 
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+
+import com.etheli.arduvidrx.R;
+import com.etheli.util.SerialWriterInterface;
 import com.etheli.util.PausableWorker;
 import java.util.Vector;
 
@@ -31,6 +34,23 @@ public class VidReceiverManager
   public static final String MONITOR_STRING = "Monitor";
     /** Tag string for logging. */
   public static final String LOG_TAG = "VidRecMgr";
+
+    /** Video-receiver-mgr response:  Version information. */
+  public static final int VRECMGR_RESP_VERSION = 1;
+    /** Video-receiver-mgr response:  Channel and RSSI values. */
+  public static final int VRECMGR_RESP_CHANRSSI = 2;
+    /** Video-receiver-mgr response:  Set value for freqCodeTextView. */
+  public static final int VRECMGR_RESP_CHANTEXT = 3;
+    /** Video-receiver-mgr response:  Show popup message. */
+  public static final int VRECMGR_RESP_POPUPMSG = 4;
+    /** Video-receiver-mgr response:  Video receiver started; enable button, etc. */
+  public static final int VRECMGR_RESP_VRMGRSTARTED = 5;
+    /** Video-receiver-mgr response:  Video receiver scanning started. */
+  public static final int VRECMGR_RESP_SCANBEGIN = 6;
+    /** Video-receiver-mgr response:  Video receiver scanning finished. */
+  public static final int VRECMGR_RESP_SCANEND = 7;
+    /** Video-receiver-mgr response:  Show select-channel choice dialog. */
+  public static final int VRECMGR_RESP_SELCHANNEL = 8;
 
   public static final String VIDRX_CR_STR = "\r";
   public static final byte [] VIDRX_CR_ARR = VIDRX_CR_STR.getBytes();
@@ -159,9 +179,8 @@ public class VidReceiverManager
       {  //not connected (test mode)
         final String msgStr = parentActivityObj.getString(R.string.testmode_message);
         if(mainGuiUpdateHandlerObj != null)
-        {
-          mainGuiUpdateHandlerObj.obtainMessage(      //show message in 'version' text view
-                                     ProgramResources.MAINGUI_UPD_VERSION,msgStr).sendToTarget();
+        {                                   //show message in 'version' text view:
+          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VERSION,msgStr).sendToTarget();
         }
         Log.d(LOG_TAG,msgStr);
         return;
@@ -181,8 +200,7 @@ public class VidReceiverManager
         Log.d(LOG_TAG, "Receiver version info:  " + versionStr);
         if(mainGuiUpdateHandlerObj != null)
         {
-          mainGuiUpdateHandlerObj.obtainMessage(
-                                 ProgramResources.MAINGUI_UPD_VERSION,versionStr).sendToTarget();
+          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VERSION,versionStr).sendToTarget();
         }
         getNextReceivedLine(RESP_WAIT_TIMEMS);   //receive and discard 2nd line of response
       }
@@ -192,8 +210,7 @@ public class VidReceiverManager
         Log.e(LOG_TAG,popStr);
         if(mainGuiUpdateHandlerObj != null)
         {
-          mainGuiUpdateHandlerObj.obtainMessage(
-                                    ProgramResources.MAINGUI_UPD_POPUPMSG,popStr).sendToTarget();
+          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,popStr).sendToTarget();
         }
       }
       outputReceiverEchoCommand(false);     //send echo-off command
@@ -203,9 +220,8 @@ public class VidReceiverManager
         final String popStr = parentActivityObj.getString(R.string.errfetch_chanrssi_vals);
         Log.e(LOG_TAG,popStr);
         if(mainGuiUpdateHandlerObj != null)
-        {
-          mainGuiUpdateHandlerObj.obtainMessage(      //show popup with error message
-                                    ProgramResources.MAINGUI_UPD_POPUPMSG,popStr).sendToTarget();
+        {                                   //show popup with error message:
+          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,popStr).sendToTarget();
         }
       }
 
@@ -218,9 +234,8 @@ public class VidReceiverManager
         commandHandlerThreadObj = new CommandHandlerThread();   //create new thread object
       commandHandlerThreadObj.start();           //start command handler
       if(mainGuiUpdateHandlerObj != null)
-      {
-        mainGuiUpdateHandlerObj.obtainMessage(   //send notification that manager startup is done
-                                        ProgramResources.MAINGUI_UPD_VRMGRSTARTED).sendToTarget();
+      {                                     //send notification that manager startup is done:
+        mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VRMGRSTARTED).sendToTarget();
       }
       Log.d(LOG_TAG, "Finished manager startup");
     }
@@ -712,8 +727,7 @@ public class VidReceiverManager
     final String scanStr = doSendScanCommandToReceiver(cmdBuff,false);
     if(mainGuiUpdateHandlerObj != null)
     {  //handler OK; send entries list to OperationFragment for choice dialog
-      mainGuiUpdateHandlerObj.obtainMessage(
-                                 ProgramResources.MAINGUI_UPD_SELCHANNEL,scanStr).sendToTarget();
+      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SELCHANNEL,scanStr).sendToTarget();
     }
   }
 
@@ -725,13 +739,12 @@ public class VidReceiverManager
   {
     if(mainGuiUpdateHandlerObj != null)
     {  //handler OK; notify OperationFragment that receiver scanning has started
-      mainGuiUpdateHandlerObj.obtainMessage(
-                                          ProgramResources.MAINGUI_UPD_SCANBEGIN).sendToTarget();
+      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SCANBEGIN).sendToTarget();
     }
     getNextReceivedLine(8000);     //wait for response (allow for scanning time)
     if(mainGuiUpdateHandlerObj != null)
     {  //handler OK; notify OperationFragment that receiver scanning is finished
-      mainGuiUpdateHandlerObj.obtainMessage(ProgramResources.MAINGUI_UPD_SCANEND).sendToTarget();
+      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SCANEND).sendToTarget();
     }
   }
 
@@ -784,9 +797,8 @@ public class VidReceiverManager
       final String errStr = "List error:  " + respStr;
       Log.e(LOG_TAG,errStr);                          //log error message
       if(mainGuiUpdateHandlerObj != null)
-      {
-        mainGuiUpdateHandlerObj.obtainMessage(        //show error with popup message
-                                  ProgramResources.MAINGUI_UPD_POPUPMSG,errStr).sendToTarget();
+      {                                     //show error with popup message:
+        mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,errStr).sendToTarget();
       }
     }
     fetchMonScanListStrFromReceiver();           //fetch value from receiver
@@ -1267,7 +1279,7 @@ public class VidReceiverManager
           if(mainGuiUpdateHandlerObj != null)
           {
             mainGuiUpdateHandlerObj.obtainMessage(
-                   ProgramResources.MAINGUI_UPD_CHANRSSI,freqVal,rssiVal,dispStr).sendToTarget();
+                                   VRECMGR_RESP_CHANRSSI,freqVal,rssiVal,dispStr).sendToTarget();
           }
           return true;       //indicate success
         }

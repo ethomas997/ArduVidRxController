@@ -3,7 +3,7 @@
 //   5/7/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.app;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -24,6 +24,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import com.etheli.arduvidrx.R;
+import com.etheli.arduvidrx.bt.BluetoothSerialService;
+import com.etheli.arduvidrx.rec.FrequencyTable;
+import com.etheli.arduvidrx.rec.VidReceiverManager;
+import com.etheli.util.DataWriteReceiver;
 import com.etheli.util.SwipeGestureDispatcher;
 
 /**

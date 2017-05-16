@@ -3,9 +3,8 @@
 //  5/10/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.app;
 
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -24,6 +23,13 @@ import android.widget.CheckBox;
 import android.widget.ProgressBar;
 import android.widget.TabHost;
 import android.widget.TextView;
+
+import com.etheli.arduvidrx.R;
+import com.etheli.arduvidrx.bt.BluetoothSerialService;
+import com.etheli.arduvidrx.rec.ChannelTracker;
+import com.etheli.arduvidrx.rec.FrequencyTable;
+import com.etheli.arduvidrx.rec.ScanListManager;
+import com.etheli.arduvidrx.rec.VidReceiverManager;
 import com.etheli.util.Averager;
 import com.etheli.util.DialogUtils;
 import com.etheli.util.GuiUtils;
@@ -634,11 +640,11 @@ public class OperationFragment extends Fragment
       {
         switch(msgObj.what)
         {
-          case ProgramResources.MAINGUI_UPD_VERSION:       //version information
+          case VidReceiverManager.VRECMGR_RESP_VERSION:    //version information
             if(msgObj.obj instanceof String)
               setVersionTextViewStr((String)msgObj.obj);
             break;
-          case ProgramResources.MAINGUI_UPD_CHANRSSI:      //channel and RSSI values
+          case VidReceiverManager.VRECMGR_RESP_CHANRSSI:   //channel and RSSI values
             final int freqVal;
             if((freqVal=msgObj.arg1) > 0)
             {  //frequency value OK to display
@@ -657,15 +663,15 @@ public class OperationFragment extends Fragment
             }
             setRssiDisplayValue(msgObj.arg2);
             break;
-          case ProgramResources.MAINGUI_UPD_CHANTEXT:      //set value for freqCodeTextView
+          case VidReceiverManager.VRECMGR_RESP_CHANTEXT:   //set value for freqCodeTextView
             if(msgObj.obj instanceof String)
               setFreqCodeTextViewStr((String)msgObj.obj);
             break;
-          case ProgramResources.MAINGUI_UPD_POPUPMSG:      //show popup message
+          case VidReceiverManager.VRECMGR_RESP_POPUPMSG:   //show popup message
             if(msgObj.obj instanceof String)
               GuiUtils.showPopupMessage(getActivity(),(String)msgObj.obj);
             break;
-          case ProgramResources.MAINGUI_UPD_VRMGRSTARTED:  //video receiver started
+          case VidReceiverManager.VRECMGR_RESP_VRMGRSTARTED:    //video receiver started
             if(vidReceiverManagerObj != null)
             {
               final String listStr;
@@ -678,18 +684,18 @@ public class OperationFragment extends Fragment
               }
             }
             break;
-          case ProgramResources.MAINGUI_UPD_SCANBEGIN:     //video-receiver scanning started
+          case VidReceiverManager.VRECMGR_RESP_SCANBEGIN:  //video-receiver scanning started
                                                       //disable buttons while scanning:
             GuiUtils.setViewButtonsEnabledState(getView(),false);
             setRssiDisplayValue(msgObj.arg2);         //set RSSI display to zero
                                                       //show "Scanning..." text while scanning:
             setFreqCodeTextViewStr(getString(R.string.scanning_status_text));
             break;
-          case ProgramResources.MAINGUI_UPD_SCANEND:       //video-receiver scanning finished
+          case VidReceiverManager.VRECMGR_RESP_SCANEND:    //video-receiver scanning finished
             setFreqCodeTextViewStr("");               //clear "Scanning..." text
             GuiUtils.setViewButtonsEnabledState(getView(),true);       //re-enable buttons
             break;
-          case ProgramResources.MAINGUI_UPD_SELCHANNEL:    //show select-channel choice dialog
+          case VidReceiverManager.VRECMGR_RESP_SELCHANNEL:    //show select-channel choice dialog
             if(msgObj.obj instanceof String)
               showSelChanDialogForScanStr((String)msgObj.obj);
             break;

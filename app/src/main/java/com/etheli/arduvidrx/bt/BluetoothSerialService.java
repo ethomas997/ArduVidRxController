@@ -18,7 +18,7 @@
  * limitations under the License.
  */
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.bt;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,13 +38,18 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
+import com.etheli.arduvidrx.R;
+import com.etheli.util.DataWriteReceiver;
+import com.etheli.util.SerialWriterInterface;
+
 /**
  * This class does all the work for setting up and managing Bluetooth
  * connections with other devices. It has a thread that listens for
  * incoming connections, a thread for connecting with a device, and a
  * thread for performing data transmissions when connected.
  */
-public class BluetoothSerialService implements SerialWriterInterface {
+public class BluetoothSerialService implements SerialWriterInterface
+{
     // Debugging
     private static final String TAG = "BluetoothSerialService";
     private static final boolean D = false;

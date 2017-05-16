@@ -1,11 +1,13 @@
 //ProgramResources.java:  Global program resources singleton.
 //
-//  4/27/2017 -- [ET]
+//  5/15/2017 -- [ET]
 //
 
-package com.etheli.arduvidrx;
+package com.etheli.arduvidrx.app;
 
-import android.os.Handler;
+import com.etheli.arduvidrx.bt.BluetoothSerialService;
+import com.etheli.arduvidrx.rec.FrequencyTable;
+import com.etheli.arduvidrx.rec.VidReceiverManager;
 
 /**
  * Class ProgramResources defines a global program resources singleton.
@@ -16,23 +18,6 @@ public class ProgramResources
   public static final int SMALL_SCREEN_LIMIT = 550;
     /** Scale value for when button-text sizes are reduced. */
   public static final float BUTTON_SMSCALE_VAL = 0.8f;
-
-    /** Main-GUI update handler:  Version information. */
-  public static final int MAINGUI_UPD_VERSION = 1;
-    /** Main-GUI update handler:  Channel and RSSI values. */
-  public static final int MAINGUI_UPD_CHANRSSI = 2;
-    /** Main-GUI update handler:  Set value for freqCodeTextView. */
-  public static final int MAINGUI_UPD_CHANTEXT = 3;
-    /** Main-GUI update handler:  Show popup message. */
-  public static final int MAINGUI_UPD_POPUPMSG = 4;
-    /** Main-GUI update handler:  Video receiver started; enable button, etc. */
-  public static final int MAINGUI_UPD_VRMGRSTARTED = 5;
-    /** Main-GUI update handler:  Video receiver scanning started. */
-  public static final int MAINGUI_UPD_SCANBEGIN = 6;
-    /** Main-GUI update handler:  Video receiver scanning finished. */
-  public static final int MAINGUI_UPD_SCANEND = 7;
-    /** Main-GUI update handler:  Show select-channel choice dialog. */
-  public static final int MAINGUI_UPD_SELCHANNEL = 8;
 
   private static ProgramResources programResourcesObj = null;
   private BluetoothSerialService bluetoothSerialServiceObj = null;
