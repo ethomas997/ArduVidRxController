@@ -12,7 +12,6 @@ import android.app.FragmentTransaction;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
@@ -31,6 +30,7 @@ import com.etheli.arduvidrx.rec.FrequencyTable;
 import com.etheli.arduvidrx.rec.ScanListManager;
 import com.etheli.arduvidrx.rec.VidReceiverManager;
 import com.etheli.util.Averager;
+import com.etheli.util.DataMsgProcHandler;
 import com.etheli.util.DialogUtils;
 import com.etheli.util.GuiUtils;
 import com.etheli.util.SwipeGestureDispatcher;
@@ -88,7 +88,7 @@ public class OperationFragment extends Fragment
               //setup so video-receiver-manager can update channel tracker:
         vidReceiverManagerObj.setChannelTrackerObj(videoChannelTrackerObj);
               //setup so video-receiver-manager can update GUI widgets:
-        vidReceiverManagerObj.setGuiUpdateHandlerObj(mainGuiUpdateHandlerObj);
+        vidReceiverManagerObj.setRespMsgProcessorObj(mainGuiUpdateHandlerObj);
               //save connected state of receiver serial on entry:
         vidRecSerialConnectedFlag = vidReceiverManagerObj.isReceiverSerialConnected();
       }
@@ -145,7 +145,7 @@ public class OperationFragment extends Fragment
                 //clear channel tracker for video-receiver-manager:
       vidReceiverManagerObj.setChannelTrackerObj(null);
                 //clear update handler for video-receiver-manager:
-      vidReceiverManagerObj.setGuiUpdateHandlerObj(null);
+      vidReceiverManagerObj.setRespMsgProcessorObj(null);
     }
     super.onDestroy();
   }
@@ -619,7 +619,7 @@ public class OperationFragment extends Fragment
   /**
    * Class MainGuiUpdateHandler handles updates to the main GUI components.
    */
-  private class MainGuiUpdateHandler extends Handler
+  private class MainGuiUpdateHandler extends DataMsgProcHandler
   {
     /**
      * Creates the update handler.
@@ -667,6 +667,12 @@ public class OperationFragment extends Fragment
             if(msgObj.obj instanceof String)
               setFreqCodeTextViewStr((String)msgObj.obj);
             break;
+          case VidReceiverManager.VRECMGR_RESP_ERRFETCHVER:     //error fetching version info
+            GuiUtils.showPopupMessage(getActivity(),R.string.errfetch_version_info);
+            break;
+          case VidReceiverManager.VRECMGR_RESP_ERRFETCHCHR:     //error fetching chan/RSSI info
+            GuiUtils.showPopupMessage(getActivity(),R.string.errfetch_chanrssi_vals);
+            break;
           case VidReceiverManager.VRECMGR_RESP_POPUPMSG:   //show popup message
             if(msgObj.obj instanceof String)
               GuiUtils.showPopupMessage(getActivity(),(String)msgObj.obj);
@@ -687,7 +693,7 @@ public class OperationFragment extends Fragment
           case VidReceiverManager.VRECMGR_RESP_SCANBEGIN:  //video-receiver scanning started
                                                       //disable buttons while scanning:
             GuiUtils.setViewButtonsEnabledState(getView(),false);
-            setRssiDisplayValue(msgObj.arg2);         //set RSSI display to zero
+            setRssiDisplayValue(0);                   //set RSSI display to zero
                                                       //show "Scanning..." text while scanning:
             setFreqCodeTextViewStr(getString(R.string.scanning_status_text));
             break;
@@ -698,6 +704,9 @@ public class OperationFragment extends Fragment
           case VidReceiverManager.VRECMGR_RESP_SELCHANNEL:    //show select-channel choice dialog
             if(msgObj.obj instanceof String)
               showSelChanDialogForScanStr((String)msgObj.obj);
+            break;
+          case VidReceiverManager.VRECMGR_RESP_TESTMODE:   //not connected (test mode)
+            setVersionTextViewStr(getString(R.string.testmode_message));
             break;
           default:                               //unknown value
             super.handleMessage(msgObj);         //pass to parent handler

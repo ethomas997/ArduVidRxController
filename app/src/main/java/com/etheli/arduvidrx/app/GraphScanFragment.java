@@ -1089,16 +1089,21 @@ public class GraphScanFragment extends Fragment
           doTestModeGraphOutput();
           return;
         }
+              //setup minimum count for set of frequencies considered valid:
+        final int minFreqsCount = ProgramResources.getProgramResourcesObj().
+                                         getFrequencyTableObj().getFreqChanItemsArrLength() / 2;
         vidRecvrMgrObj.pauseReceiverUpdateWorker();   //make sure manager worker is paused
         vidReceiverManagerObj = vidRecvrMgrObj;       //make mgr available to other methods
         waitForNotify(100);
         String respStr;
         boolean errFlag = false;
-        int freqVal;
+        int freqVal, freqCount;
         while(!isTerminated())
         {  //for each iteration of "XF" command and response
 //          System.out.println("DEBUG ReceiverScanDataThread sending XF");
           vidRecvrMgrObj.outputFullBandScanCommand();      //send "XF" command
+          updateNextGraphEntry(0,0,null);        //make sure at start of graph
+          freqCount = 0;                         //initialize count for freq set
           while(true)
           {  //for each "freqCC=rssi" line received
             if((respStr=vidRecvrMgrObj.getNextReceivedLine(
@@ -1113,8 +1118,13 @@ public class GraphScanFragment extends Fragment
               errFlag = true;
               break;
             }
-            if(freqVal == 0)      //if "0=0" received then
+            if(freqVal == 0)
+            {  //data line "0=0" received (end of data set)
+              if(freqCount < minFreqsCount)      //if not enough received then
+                errFlag = true;                  //set error to clear buffer, etc
               break;              //exit inner loop (end of set)
+            }
+            ++freqCount;                    //increment count for freq set
             if(threadPauseOrTerminateFlag)
             {  //thread is pausing or terminating; send CR to abort rest of scan
               vidRecvrMgrObj.transmitCarriageReturn();
@@ -1126,8 +1136,16 @@ public class GraphScanFragment extends Fragment
             errFlag = false;
             if(!isTerminated())
             {  //thread is not terminating
-              vidRecvrMgrObj.transmitCarriageReturn();     //send CR to abort rest of scan
-              waitForNotify(250);                          //pause to flush incoming data
+                   //send CRs to abort rest of scan and clear any lingering input
+              vidRecvrMgrObj.transmitCarriageReturn();
+              waitForNotify(50);
+              vidRecvrMgrObj.clearBuffer();
+              vidRecvrMgrObj.transmitCarriageReturn();
+              waitForNotify(50);
+              vidRecvrMgrObj.clearBuffer();
+              waitForNotify(100);
+              vidRecvrMgrObj.clearBuffer();
+              waitForNotify(50);
             }
           }
           if(threadPauseOrTerminateFlag)
@@ -1142,6 +1160,8 @@ public class GraphScanFragment extends Fragment
       }
       catch(Exception ex)
       {  //some kind of exception error; log it
+        if(vidRecvrMgrObj != null)
+          vidRecvrMgrObj.transmitCarriageReturn();    //send CR to abort rest of scan
         Log.e(LOG_TAG, "Exception in ReceiverScanDataThread", ex);
       }
     }

@@ -1,19 +1,16 @@
 //VidReceiverManager.java:  Manages command I/O for an ArduVidRx unit.
 //
-//  5/11/2017 -- [ET]
+//  5/16/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx.rec;
 
-import android.app.Activity;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.util.Log;
-
-import com.etheli.arduvidrx.R;
+import com.etheli.util.DataMessageProcessor;
+import com.etheli.util.DataMsgHandlerInterface;
+import com.etheli.util.DataMsgSenderInterface;
 import com.etheli.util.SerialWriterInterface;
 import com.etheli.util.PausableWorker;
+import com.etheli.util.ULog;
 import java.util.Vector;
 
 /**
@@ -41,16 +38,22 @@ public class VidReceiverManager
   public static final int VRECMGR_RESP_CHANRSSI = 2;
     /** Video-receiver-mgr response:  Set value for freqCodeTextView. */
   public static final int VRECMGR_RESP_CHANTEXT = 3;
+    /** Video-receiver-mgr response:  Error fetching version info. */
+  public static final int VRECMGR_RESP_ERRFETCHVER = 4;
+    /** Video-receiver-mgr response:  Error fetching channel/RSSI info. */
+  public static final int VRECMGR_RESP_ERRFETCHCHR = 5;
     /** Video-receiver-mgr response:  Show popup message. */
-  public static final int VRECMGR_RESP_POPUPMSG = 4;
+  public static final int VRECMGR_RESP_POPUPMSG = 6;
     /** Video-receiver-mgr response:  Video receiver started; enable button, etc. */
-  public static final int VRECMGR_RESP_VRMGRSTARTED = 5;
+  public static final int VRECMGR_RESP_VRMGRSTARTED = 7;
     /** Video-receiver-mgr response:  Video receiver scanning started. */
-  public static final int VRECMGR_RESP_SCANBEGIN = 6;
+  public static final int VRECMGR_RESP_SCANBEGIN = 8;
     /** Video-receiver-mgr response:  Video receiver scanning finished. */
-  public static final int VRECMGR_RESP_SCANEND = 7;
+  public static final int VRECMGR_RESP_SCANEND = 9;
     /** Video-receiver-mgr response:  Show select-channel choice dialog. */
-  public static final int VRECMGR_RESP_SELCHANNEL = 8;
+  public static final int VRECMGR_RESP_SELCHANNEL = 10;
+    /** Video-receiver-mgr response:  Not connected (test mode). */
+  public static final int VRECMGR_RESP_TESTMODE = 11;
 
   public static final String VIDRX_CR_STR = "\r";
   public static final byte [] VIDRX_CR_ARR = VIDRX_CR_STR.getBytes();
@@ -79,42 +82,40 @@ public class VidReceiverManager
   public static final String VIDRX_MONINTVL_PRESTR = "XI";
   public static final String VIDRX_SCANLIST_PRESTR = "L";
 
-  private static final int VIDCMD_TERMINATE_MSGC = 0;      //codes for command messages
-  private static final int VIDCMD_TUNECODE_MSGC = 1;       // via CommandHandlerThread
-  private static final int VIDCMD_TUNEFREQ_MSGC = 2;
-  private static final int VIDCMD_AUTOTUNE_MSGC = 3;
-  private static final int VIDCMD_NEXTBAND_MSGC = 4;
-  private static final int VIDCMD_NEXTCHAN_MSGC = 5;
-  private static final int VIDCMD_PREVBAND_MSGC = 6;
-  private static final int VIDCMD_PREVCHAN_MSGC = 7;
-  private static final int VIDCMD_UPONEMHZ_MSGC = 8;
-  private static final int VIDCMD_DOWNONEMHZ_MSGC = 9;
-  private static final int VIDCMD_MNEXTCH_MSGC = 10;
-  private static final int VIDCMD_MPREVCH_MSGC = 11;
-  private static final int VIDCMD_MONITOR_MSGC = 12;
-  private static final int VIDCMD_MONRESCAN_MSGC = 13;
-  private static final int VIDCMD_SETMINRSSI_MSGC = 14;
-  private static final int VIDCMD_SETMONINTVL_MSGC = 15;
-  private static final int VIDCMD_SETSCANLIST_MSGC = 16;
-  private static final int VIDCMD_CHANSCAN_MSGC = 17;
-  private static final int VIDCMD_FULLSCAN_MSGC = 18;
+  private static final int VIDCMD_TUNECODE_MSGC = 0;       //codes for command messages
+  private static final int VIDCMD_TUNEFREQ_MSGC = 1;       // via DataMessageProcessor
+  private static final int VIDCMD_AUTOTUNE_MSGC = 2;
+  private static final int VIDCMD_NEXTBAND_MSGC = 3;
+  private static final int VIDCMD_NEXTCHAN_MSGC = 4;
+  private static final int VIDCMD_PREVBAND_MSGC = 5;
+  private static final int VIDCMD_PREVCHAN_MSGC = 6;
+  private static final int VIDCMD_UPONEMHZ_MSGC = 7;
+  private static final int VIDCMD_DOWNONEMHZ_MSGC = 8;
+  private static final int VIDCMD_MNEXTCH_MSGC = 9;
+  private static final int VIDCMD_MPREVCH_MSGC = 10;
+  private static final int VIDCMD_MONITOR_MSGC = 11;
+  private static final int VIDCMD_MONRESCAN_MSGC = 12;
+  private static final int VIDCMD_SETMINRSSI_MSGC = 13;
+  private static final int VIDCMD_SETMONINTVL_MSGC = 14;
+  private static final int VIDCMD_SETSCANLIST_MSGC = 15;
+  private static final int VIDCMD_CHANSCAN_MSGC = 16;
+  private static final int VIDCMD_FULLSCAN_MSGC = 17;
 
   private static final String SCANNING_CHECK_STR = " Scanning";
   private static final int SCANNING_CHKSTR_LEN = SCANNING_CHECK_STR.length();
   private int vidrxScanInProgStrMatchPos = 0;              //position for string matching
   private boolean vidrxScanningInProgressFlag = false;     //true while receiver scanning
 
-  private final Activity parentActivityObj;
   private final SerialWriterInterface serialServiceWriterObj;
   private final StringBuffer receivedCharsBuffer = new StringBuffer();
   private final Vector<String> receivedLinesList = new Vector<String>();
   private char firstReceivedCharacter = '\0';
   private ChannelTracker vidChannelTrackerObj = null;
-  private Handler mainGuiUpdateHandlerObj = null;
+  private DataMsgSenderInterface vidRecMgrRespProcessorObj = null;
   private char receivedLinesLastEndChar = '\0';
   private ReceiverUpdateWorker receiverUpdateWorkerObj = null;
   private boolean recUpdWrkrPausedRequestedFlag = false;
-  private CommandHandlerThread commandHandlerThreadObj = new CommandHandlerThread();
+  private DataMessageProcessor vidCmdMesssageProcessorObj = null;
   private boolean monitorModeActiveFlag = false;
   private int minRssiForScansValue = 30;
   private int monitorIntervalValue = 5;
@@ -123,12 +124,11 @@ public class VidReceiverManager
 
   /**
    * Creates an ArduVidRx manager.
-   * @param activityObj parent object for UI Activity Context.
-   * @param sWriterObj SerialWriterInterface object to use for sending commands.
+   * @param sWriterObj SerialWriterInterface object to use for sending
+   * commands to the video receiver.
    */
-  public VidReceiverManager(Activity activityObj, SerialWriterInterface sWriterObj)
+  public VidReceiverManager(SerialWriterInterface sWriterObj)
   {
-    parentActivityObj = activityObj;
     serialServiceWriterObj = sWriterObj;
   }
 
@@ -142,12 +142,12 @@ public class VidReceiverManager
   }
 
   /**
-   * Sets the GUI-update handler object.
-   * @param updHandlerObj handler for update messages to main GUI.
+   * Sets the data-message processor object for response messages.
+   * @param respMsgProcObj data-message processor for response messages.
    */
-  public void setGuiUpdateHandlerObj(Handler updHandlerObj)
+  public void setRespMsgProcessorObj(DataMsgSenderInterface respMsgProcObj)
   {
-    mainGuiUpdateHandlerObj = updHandlerObj;
+    vidRecMgrRespProcessorObj = respMsgProcObj;
   }
 
   /**
@@ -177,16 +177,13 @@ public class VidReceiverManager
 
       if(!isReceiverSerialConnected())
       {  //not connected (test mode)
-        final String msgStr = parentActivityObj.getString(R.string.testmode_message);
-        if(mainGuiUpdateHandlerObj != null)
-        {                                   //show message in 'version' text view:
-          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VERSION,msgStr).sendToTarget();
-        }
-        Log.d(LOG_TAG,msgStr);
+        if(vidRecMgrRespProcessorObj != null)    //respond with test-mode indicator
+          vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_TESTMODE);
+        ULog.d(LOG_TAG, "Not connected (test mode)");
         return;
       }
 
-      Log.d(LOG_TAG, "Began manager startup");
+      ULog.d(LOG_TAG, "Began manager startup");
 
          //start with " <CR><CR>" in case monitor mode is in progress
          // (prepend space to make sure isn't command-repeat via <Enter>):
@@ -197,32 +194,24 @@ public class VidReceiverManager
       final String versionStr;
       if((versionStr=queryGetVersionInfo()) != null && versionStr.trim().length() > 0)
       {  //non-empty version string successfully fetched from receiver
-        Log.d(LOG_TAG, "Receiver version info:  " + versionStr);
-        if(mainGuiUpdateHandlerObj != null)
-        {
-          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VERSION,versionStr).sendToTarget();
-        }
+        ULog.d(LOG_TAG, "Receiver version info:  " + versionStr);
+        if(vidRecMgrRespProcessorObj != null)
+          vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_VERSION,versionStr);
         getNextReceivedLine(RESP_WAIT_TIMEMS);   //receive and discard 2nd line of response
       }
       else
       {  //unable to fetch version string from receiver
-        final String popStr = parentActivityObj.getString(R.string.errfetch_version_info);
-        Log.e(LOG_TAG,popStr);
-        if(mainGuiUpdateHandlerObj != null)
-        {
-          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,popStr).sendToTarget();
-        }
+        ULog.e(LOG_TAG, "Unable to fetch version info");
+        if(vidRecMgrRespProcessorObj != null)         //respond with error notification
+          vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_ERRFETCHVER);
       }
       outputReceiverEchoCommand(false);     //send echo-off command
 
       if(!queryReportChanRssiVals())   //do initial query/report of channel/RSSI values
       {  //query failed
-        final String popStr = parentActivityObj.getString(R.string.errfetch_chanrssi_vals);
-        Log.e(LOG_TAG,popStr);
-        if(mainGuiUpdateHandlerObj != null)
-        {                                   //show popup with error message:
-          mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,popStr).sendToTarget();
-        }
+        ULog.e(LOG_TAG, "Unable to fetch chan/RSSI");
+        if(vidRecMgrRespProcessorObj != null)         //respond with error notification
+          vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_ERRFETCHCHR);
       }
 
       if(receiverUpdateWorkerObj != null)        //if previous worker then
@@ -230,18 +219,25 @@ public class VidReceiverManager
       receiverUpdateWorkerObj = new ReceiverUpdateWorker();
       doReceiverUpdateWorkerStartup();
 
-      if(commandHandlerThreadObj.wasStartedFlag)                //if was previously run then
-        commandHandlerThreadObj = new CommandHandlerThread();   //create new thread object
-      commandHandlerThreadObj.start();           //start command handler
-      if(mainGuiUpdateHandlerObj != null)
-      {                                     //send notification that manager startup is done:
-        mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_VRMGRSTARTED).sendToTarget();
-      }
-      Log.d(LOG_TAG, "Finished manager startup");
+      if(vidCmdMesssageProcessorObj != null && vidCmdMesssageProcessorObj.isAlive())
+        vidCmdMesssageProcessorObj.quitProcessing();  //if previous proc running then stop it
+      vidCmdMesssageProcessorObj = new DataMessageProcessor(
+          new DataMsgHandlerInterface()
+            {
+              @Override
+              public boolean handleDataMessage(int msgCode, int val1, int val2, String paramStr)
+              {
+                return handleReceiverCommandMessage(msgCode,val1,val2,paramStr);
+              }
+            });
+      vidCmdMesssageProcessorObj.start();        //start command-message processor
+      if(vidRecMgrRespProcessorObj != null)      //send notification that manager startup is done
+        vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_VRMGRSTARTED);
+      ULog.d(LOG_TAG, "Finished manager startup");
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Exception during manager startup", ex);
+      ULog.e(LOG_TAG, "Exception during manager startup", ex);
     }
   }
 
@@ -255,12 +251,12 @@ public class VidReceiverManager
     catch(InterruptedException ex) {}       //do one interval delay sending commands
     if(recUpdWrkrPausedRequestedFlag)
     {  //method 'pauseReceiverUpdateWorker()' was called
-      Log.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because of worker-pause request");
+      ULog.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because of worker-pause request");
       return;
     }
     if(!isReceiverSerialConnected())
     {  //receiver serial link not connected
-      Log.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because serial disconnected");
+      ULog.d(LOG_TAG, "Aborting 'doReceiverUpdateWorkerStartup()' because serial disconnected");
       return;
     }
     if(outputReceiverEchoCommand(false) == null)      //send echo-off command
@@ -282,18 +278,18 @@ public class VidReceiverManager
     {  //method 'pauseReceiverUpdateWorker()' was not called during startup
       if(!receiverUpdateWorkerObj.isAlive())
       {  //worker thread not running
-        Log.d(LOG_TAG, "Starting receiver-update worker");
+        ULog.d(LOG_TAG, "Starting receiver-update worker");
         receiverUpdateWorkerObj.start();           //start update worker
       }
       else
       {  //worker thread is running (paused)
-        Log.d(LOG_TAG, "Resuming receiver-update worker in startup");
+        ULog.d(LOG_TAG, "Resuming receiver-update worker in startup");
         receiverUpdateWorkerObj.resumeThread();    //resume update worker
       }
     }
     else
     {  //method 'pauseReceiverUpdateWorker()' was called during startup
-      Log.d(LOG_TAG, "Not starting worker in 'doReceiverUpdateWorkerStartup()' " +
+      ULog.d(LOG_TAG, "Not starting worker in 'doReceiverUpdateWorkerStartup()' " +
                                                 "because of worker-pause request");
     }
   }
@@ -322,18 +318,18 @@ public class VidReceiverManager
   {
     try
     {
-      if(commandHandlerThreadObj.isAlive())
-        commandHandlerThreadObj.sendMessage(VIDCMD_TERMINATE_MSGC);  //stop command handler
+      if(vidCmdMesssageProcessorObj != null)
+        vidCmdMesssageProcessorObj.quitProcessing();  //stop command-message processor
       if(receiverUpdateWorkerObj != null)
       {  //worker was created; stop it
-        Log.d(LOG_TAG, "Stopping receiver-update worker");
+        ULog.d(LOG_TAG, "Stopping receiver-update worker");
         receiverUpdateWorkerObj.terminate(10);
         receiverUpdateWorkerObj = null;
       }
     }
     catch(Exception ex)
     {  //some kind of exception error
-      Log.e(LOG_TAG, "Error stopping video-receiver-manager threads", ex);
+      ULog.e(LOG_TAG, "Error stopping video-receiver-manager threads", ex);
     }
   }
 
@@ -343,7 +339,7 @@ public class VidReceiverManager
    */
   public void tuneReceiverToChannelCode(String chanCodeStr)
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_TUNECODE_MSGC,chanCodeStr);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_TUNECODE_MSGC,chanCodeStr);
   }
 
   /**
@@ -352,7 +348,7 @@ public class VidReceiverManager
    */
   public void tuneReceiverToFrequency(int freqVal)
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_TUNECODE_MSGC,Integer.toString(freqVal));
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_TUNECODE_MSGC,Integer.toString(freqVal));
   }
 
   /**
@@ -360,7 +356,7 @@ public class VidReceiverManager
    */
   public void autoTuneReceiver()
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_AUTOTUNE_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_AUTOTUNE_MSGC);
   }
 
   /**
@@ -372,9 +368,9 @@ public class VidReceiverManager
   public void tuneNextPrevBandChannel(boolean bandFlag, boolean nextFlag)
   {
     if(bandFlag)
-      commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_NEXTBAND_MSGC : VIDCMD_PREVBAND_MSGC);
+      vidCmdMesssageProcessorObj.sendMessage(nextFlag ? VIDCMD_NEXTBAND_MSGC : VIDCMD_PREVBAND_MSGC);
     else
-      commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_NEXTCHAN_MSGC : VIDCMD_PREVCHAN_MSGC);
+      vidCmdMesssageProcessorObj.sendMessage(nextFlag ? VIDCMD_NEXTCHAN_MSGC : VIDCMD_PREVCHAN_MSGC);
   }
 
   /**
@@ -383,7 +379,7 @@ public class VidReceiverManager
    */
   public void tuneReceiverFreqByOneMhz(boolean upFlag)
   {
-    commandHandlerThreadObj.sendMessage(upFlag ? VIDCMD_UPONEMHZ_MSGC : VIDCMD_DOWNONEMHZ_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(upFlag ? VIDCMD_UPONEMHZ_MSGC : VIDCMD_DOWNONEMHZ_MSGC);
   }
 
   /**
@@ -393,7 +389,7 @@ public class VidReceiverManager
    */
   public void selectPrevNextMonitorChannel(boolean nextFlag)
   {
-    commandHandlerThreadObj.sendMessage(nextFlag ? VIDCMD_MNEXTCH_MSGC : VIDCMD_MPREVCH_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(nextFlag ? VIDCMD_MNEXTCH_MSGC : VIDCMD_MPREVCH_MSGC);
   }
 
   /**
@@ -401,7 +397,7 @@ public class VidReceiverManager
    */
   public void sendMonitorCmdToReceiver()
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_MONITOR_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_MONITOR_MSGC);
   }
 
   /**
@@ -409,7 +405,7 @@ public class VidReceiverManager
    */
   public void sendMonRescanCmdToReceiver()
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_MONRESCAN_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_MONRESCAN_MSGC);
   }
 
   /**
@@ -418,7 +414,7 @@ public class VidReceiverManager
    */
   public void sendMinRssiValToReceiver(int minRssiVal)
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_SETMINRSSI_MSGC,minRssiVal);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_SETMINRSSI_MSGC,minRssiVal);
   }
 
   /**
@@ -427,7 +423,7 @@ public class VidReceiverManager
    */
   public void sendMonIntvlValToReceiver(int intervalVal)
   {
-    commandHandlerThreadObj.sendMessage(VIDCMD_SETMONINTVL_MSGC,intervalVal);
+    vidCmdMesssageProcessorObj.sendMessage(VIDCMD_SETMONINTVL_MSGC,intervalVal);
   }
 
   /**
@@ -437,7 +433,7 @@ public class VidReceiverManager
   public void sendMonScanListToReceiver(String listStr)
   {
     if(isReceiverSerialConnected())
-      commandHandlerThreadObj.sendMessage(VIDCMD_SETSCANLIST_MSGC,listStr);
+      vidCmdMesssageProcessorObj.sendMessage(VIDCMD_SETSCANLIST_MSGC,listStr);
     else                                    //if not connected (test mode) then
       monitorScanListString = listStr;      //set monitor/scan list directly
   }
@@ -450,7 +446,7 @@ public class VidReceiverManager
    */
   public void startScanSelectChanFunction(boolean fullFlag)
   {
-    commandHandlerThreadObj.sendMessage(fullFlag ? VIDCMD_FULLSCAN_MSGC : VIDCMD_CHANSCAN_MSGC);
+    vidCmdMesssageProcessorObj.sendMessage(fullFlag ? VIDCMD_FULLSCAN_MSGC : VIDCMD_CHANSCAN_MSGC);
   }
 
   /**
@@ -476,7 +472,7 @@ public class VidReceiverManager
     recUpdWrkrPausedRequestedFlag = true;        //indicate pause requested
     if(receiverUpdateWorkerObj != null && !receiverUpdateWorkerObj.isThreadPaused())
     {
-//      Log.d(LOG_TAG, "Pausing receiver-update worker");
+//      ULog.d(LOG_TAG, "Pausing receiver-update worker");
       receiverUpdateWorkerObj.pauseThread(retImmedFlag ? 0 : 1000);
       return true;
     }
@@ -491,7 +487,7 @@ public class VidReceiverManager
     recUpdWrkrPausedRequestedFlag = false;       //clear pause-requested flag
     if(receiverUpdateWorkerObj != null)
     {
-//      Log.d(LOG_TAG, "Resuming receiver-update worker");
+//      ULog.d(LOG_TAG, "Resuming receiver-update worker");
       receiverUpdateWorkerObj.resumeThread();
     }
   }
@@ -515,17 +511,21 @@ public class VidReceiverManager
   }
 
   /**
-   * Receives and processes command messages via CommandHandlerThread.
+   * Receives and processes command messages via the DataMessageProcessor.
    * The processing is performed on a (non-UI) looper-worker thread.
-   * @param msgObj handler-message object.
+   * @param msgCode message code.
+   * @param val1 first integer value for message.
+   * @param val2 second integer value for message.
+   * @param paramStr parameter string for message.
+   * @return true if the message was recognized and handled; false if not.
    */
-  private void handleReceiverCommandMessage(Message msgObj)
+  private boolean handleReceiverCommandMessage(int msgCode, int val1, int val2, String paramStr)
   {
-    switch(msgObj.what)
+    switch(msgCode)
     {
       case VIDCMD_TUNECODE_MSGC:       //tune receiver to channel code
       case VIDCMD_TUNEFREQ_MSGC:       //tune receiver to frequency in MHz
-        sendCommandNoResponse(VIDRX_TUNE_PRESTR + msgObj.obj + VIDRX_CR_STR);
+        sendCommandNoResponse(VIDRX_TUNE_PRESTR + paramStr + VIDRX_CR_STR);
         break;
       case VIDCMD_AUTOTUNE_MSGC:       //auto-tune receiver to strongest channel
         doAutoTuneReceiver();
@@ -570,13 +570,13 @@ public class VidReceiverManager
         doSendScanCommandToReceiver(VIDRX_CHANSCAN_CMD,true);
         break;
       case VIDCMD_SETMINRSSI_MSGC:     //send new min-RSSI-for-scans value to receiver
-        doSendMinRssiValToReceiver(msgObj.arg1);
+        doSendMinRssiValToReceiver(val1);
         break;
       case VIDCMD_SETMONINTVL_MSGC:    //send new monitor-interval value to receiver
-        doSendMonIntvlValToReceiver(msgObj.arg1);
+        doSendMonIntvlValToReceiver(val1);
         break;
       case VIDCMD_SETSCANLIST_MSGC:    //send new monitor/scan list to receiver
-        doSendMonScanListToReceiver(msgObj.obj);
+        doSendMonScanListToReceiver(paramStr);
         break;
       case VIDCMD_CHANSCAN_MSGC:       //do channel-scan and show select-channel dialog
         doScanSelectChanFunction(VIDRX_CHANSCAN_CMD);
@@ -584,10 +584,10 @@ public class VidReceiverManager
       case VIDCMD_FULLSCAN_MSGC:       //do full-scan and show select-channel dialog
         doScanSelectChanFunction(VIDRX_FULLSCAN_CMD);
         break;
-      case VIDCMD_TERMINATE_MSGC:      //terminate thread/looper for command handler
-        commandHandlerThreadObj.quitThreadLooper();
-        break;
+      default:                         //unrecognized command
+        return false;
     }
+    return true;
   }
 
   /**
@@ -700,7 +700,7 @@ public class VidReceiverManager
       if(peekFirstReceivedChar() == ' ')         //if receiver is scanning then
         processReceiverScanning();               //wait for scanning to finish
       retStr = getNextReceivedLine(RESP_WAIT_TIMEMS);      //get scan-data results
-//      Log.d(LOG_TAG, "doSendScanCommandToReceiver received:  " + retStr);
+//      ULog.d(LOG_TAG, "doSendScanCommandToReceiver received:  " + retStr);
       if(monFlag)
       {  //monitor mode was active and should be restored
         if(outputCmdNoResponse(VIDRX_MONITOR_CMD) != null)
@@ -725,26 +725,26 @@ public class VidReceiverManager
   private void doScanSelectChanFunction(byte [] cmdBuff)
   {
     final String scanStr = doSendScanCommandToReceiver(cmdBuff,false);
-    if(mainGuiUpdateHandlerObj != null)
-    {  //handler OK; send entries list to OperationFragment for choice dialog
-      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SELCHANNEL,scanStr).sendToTarget();
+    if(vidRecMgrRespProcessorObj != null)
+    {  //processor OK; respond with entries list
+      vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_SELCHANNEL,scanStr);
     }
   }
 
   /**
-   * Notifies OperationFragment that receiver is scanning and waits for
+   * Sends response to indicate that receiver is scanning and waits for
    * scanning to finish.
    */
   private void processReceiverScanning()
   {
-    if(mainGuiUpdateHandlerObj != null)
-    {  //handler OK; notify OperationFragment that receiver scanning has started
-      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SCANBEGIN).sendToTarget();
+    if(vidRecMgrRespProcessorObj != null)
+    {  //processor OK; notify that receiver scanning has started
+      vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_SCANBEGIN);
     }
     getNextReceivedLine(8000);     //wait for response (allow for scanning time)
-    if(mainGuiUpdateHandlerObj != null)
-    {  //handler OK; notify OperationFragment that receiver scanning is finished
-      mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_SCANEND).sendToTarget();
+    if(vidRecMgrRespProcessorObj != null)
+    {  //handler OK; notify that receiver scanning is finished
+      vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_SCANEND);
     }
   }
 
@@ -758,7 +758,7 @@ public class VidReceiverManager
     outputCmdNoResponse((VIDRX_MINRSSI_PRESTR + minRssiVal + VIDRX_CR_STR).getBytes());
     fetchMinRssiValFromReceiver();                    //fetch value from receiver
     if(getMinRssiForScansValue() != minRssiVal)       //check value
-      Log.e(LOG_TAG, "Mismatch confirming min-RSSI value sent to receiver");
+      ULog.e(LOG_TAG, "Mismatch confirming min-RSSI value sent to receiver");
     if(resFlag)                        //if was not already paused on entry
       resumeReceiverUpdateWorker();    // then resume worker thread
   }
@@ -773,7 +773,7 @@ public class VidReceiverManager
     outputCmdNoResponse((VIDRX_MONINTVL_PRESTR + intervalVal + VIDRX_CR_STR).getBytes());
     fetchMonIntvlValFromReceiver();                   //fetch value from receiver
     if(getMonitorIntervalValue() != intervalVal)      //check value
-      Log.e(LOG_TAG, "Mismatch confirming monitor-interval value sent to receiver");
+      ULog.e(LOG_TAG, "Mismatch confirming monitor-interval value sent to receiver");
     if(resFlag)                        //if was not already paused on entry
       resumeReceiverUpdateWorker();    // then resume worker thread
   }
@@ -787,7 +787,7 @@ public class VidReceiverManager
     if(!(listStr instanceof String))
       return;
     final boolean resFlag = pauseReceiverUpdateWorker();
-//    Log.d(LOG_TAG, "Sending:  " + VIDRX_SCANLIST_PRESTR + listStr);
+//    ULog.d(LOG_TAG, "Sending:  " + VIDRX_SCANLIST_PRESTR + listStr);
               //send "L..." command, fetch response (expected response is # of frequencies):
     String respStr = outputCmdRecvResponse(
                                     (VIDRX_SCANLIST_PRESTR + listStr + VIDRX_CR_STR).getBytes());
@@ -795,15 +795,13 @@ public class VidReceiverManager
                                                            !Character.isDigit(respStr.charAt(0)))
     {  //response not empty and does not being with a digit (take as error message)
       final String errStr = "List error:  " + respStr;
-      Log.e(LOG_TAG,errStr);                          //log error message
-      if(mainGuiUpdateHandlerObj != null)
-      {                                     //show error with popup message:
-        mainGuiUpdateHandlerObj.obtainMessage(VRECMGR_RESP_POPUPMSG,errStr).sendToTarget();
-      }
+      ULog.e(LOG_TAG,errStr);                          //log error message
+      if(vidRecMgrRespProcessorObj != null)           //respond with error message
+        vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_POPUPMSG,errStr);
     }
     fetchMonScanListStrFromReceiver();           //fetch value from receiver
     if(!isEqualToMonScanListStr(listStr))        //check given value vs fetched
-      Log.e(LOG_TAG, "Mismatch confirming monitor/scan list sent to receiver");
+      ULog.e(LOG_TAG, "Mismatch confirming monitor/scan list sent to receiver");
     if(resFlag)                        //if was not already paused on entry
       resumeReceiverUpdateWorker();    // then resume worker thread
   }
@@ -821,7 +819,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error sending reset command to receiver", ex);
+      ULog.e(LOG_TAG, "Error sending reset command to receiver", ex);
     }
   }
 
@@ -896,7 +894,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error fetching min-RSSI value from receiver", ex);
+      ULog.e(LOG_TAG, "Error fetching min-RSSI value from receiver", ex);
     }
   }
 
@@ -923,7 +921,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error fetching monitor-interval value from receiver", ex);
+      ULog.e(LOG_TAG, "Error fetching monitor-interval value from receiver", ex);
     }
   }
 
@@ -946,7 +944,7 @@ public class VidReceiverManager
     try
     {         //send command, receive, check and save string response
       String respStr = outputCmdRecvResponse((VIDRX_SCANLIST_PRESTR+VIDRX_CR_STR).getBytes());
-//      Log.d(LOG_TAG, "Received (L):  " + respStr);
+//      ULog.d(LOG_TAG, "Received (L):  " + respStr);
       if(respStr != null && respStr.trim().length() > 0)
       {  //string contains data
         respStr = respStr.replace(',',' ');           //change commas to spaces
@@ -954,14 +952,14 @@ public class VidReceiverManager
         if(FrequencyTable.convStringToShortsList(respStr) != null)
           monitorScanListString = respStr;            //save response data
         else
-          Log.e(LOG_TAG, "Unable to parse monitor/scan list fetched from receiver:  " + respStr);
+          ULog.e(LOG_TAG, "Unable to parse monitor/scan list fetched from receiver:  " + respStr);
       }
       else
         monitorScanListString = "";
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error fetching monitor/scan list from receiver", ex);
+      ULog.e(LOG_TAG, "Error fetching monitor/scan list from receiver", ex);
     }
   }
 
@@ -997,7 +995,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error sending CR to receiver", ex);
+      ULog.e(LOG_TAG, "Error sending CR to receiver", ex);
     }
   }
 
@@ -1050,7 +1048,7 @@ public class VidReceiverManager
     {  //received response; attempt to parse as number
       return Integer.parseInt(str.trim());
     }
-    throw new NumberFormatException(parentActivityObj.getString(R.string.errfetch_response));
+    throw new NumberFormatException("No response from receiver");
   }
 
   /**
@@ -1070,7 +1068,7 @@ public class VidReceiverManager
     }
     catch(Exception ex)
     {
-      Log.e(LOG_TAG, "Error sending command to receiver", ex);
+      ULog.e(LOG_TAG, "Error sending command to receiver", ex);
       return null;
     }
   }
@@ -1105,7 +1103,7 @@ public class VidReceiverManager
   /**
    * Clears any received lines in the buffer.
    */
-  private void clearBuffer()
+  public void clearBuffer()
   {
     synchronized(receivedLinesList)
     {  //grab thread lock for list
@@ -1185,7 +1183,7 @@ public class VidReceiverManager
       }
       if(receivedLinesList.size() <= 0)
       {  //line not received before timeout
-        Log.d(LOG_TAG, "getNextReceivedLine() returning null (timeout)");
+        ULog.d(LOG_TAG, "getNextReceivedLine() returning null (timeout)");
         return null;                        //indicate no data
       }
               //fetch and return received line:
@@ -1275,12 +1273,10 @@ public class VidReceiverManager
               //send update to channel tracker:
           if(vidChannelTrackerObj != null)
             vidChannelTrackerObj.setFreqChannel(chCodeStr,(short)freqVal);
-              //report values to main GUI:
-          if(mainGuiUpdateHandlerObj != null)
-          {
-            mainGuiUpdateHandlerObj.obtainMessage(
-                                   VRECMGR_RESP_CHANRSSI,freqVal,rssiVal,dispStr).sendToTarget();
-          }
+              //respond with values:
+          if(vidRecMgrRespProcessorObj != null)
+            vidRecMgrRespProcessorObj.sendMessage(
+                                   VRECMGR_RESP_CHANRSSI,freqVal,rssiVal,dispStr);
           return true;       //indicate success
         }
       }
@@ -1317,101 +1313,6 @@ public class VidReceiverManager
       if(!queryReportChanRssiVals())                  //do query and report
         waitForNotify(UPDWKR_PERIODIC_DELAYMS*2);     //if failure then extra delay
       return true;
-    }
-  }
-
-  /**
-   * Class CommandHandlerThread handles commands for the video receiver
-   * via a separate Looper thread.
-   */
-  private class CommandHandlerThread extends Thread
-  {
-    private boolean wasStartedFlag = false;
-    private Handler looperHandlerObj = null;
-    private Looper threadLoopObj = null;
-
-    /**
-     * Creates a command-handling thread.
-     */
-    public CommandHandlerThread()
-    {
-      super("CommandHandlerThread");
-    }
-
-    /**
-     * Sets up and runs the looper for message handling.
-     */
-    public void run()
-    {
-      wasStartedFlag = true;
-      Looper.prepare();
-      looperHandlerObj = new Handler()
-          {        //pass messages to parent method
-            @Override
-            public void handleMessage(Message msgObj)
-            {
-              try
-              {
-                handleReceiverCommandMessage(msgObj);
-              }
-              catch(Exception ex)
-              {
-                Log.e(LOG_TAG, "Error handling command message", ex);
-              }
-            }
-          };
-      threadLoopObj = Looper.myLooper();    //save handle to looper obj
-      Looper.loop();         //run message-handling loop
-    }
-
-    /**
-     * Determines if the thread was previously started.
-     * @return true if the thread was previously started; false if not.
-     */
-    public boolean wasStarted()
-    {
-      return wasStartedFlag;
-    }
-
-    /**
-     * Terminates the thread/looper.
-     */
-    public void quitThreadLooper()
-    {
-      if(threadLoopObj != null)
-        threadLoopObj.quit();
-    }
-
-    /**
-     * Sends command message to the handler.
-     * @param msgCode message code (one of the "VIDCMD_..." values).
-     */
-    public void sendMessage(int msgCode)
-    {
-      if(looperHandlerObj != null)
-        looperHandlerObj.obtainMessage(msgCode).sendToTarget();
-    }
-
-    /**
-     * Sends command message to the handler.
-     * @param msgCode message code (one of the "VIDCMD_..." values).
-     * @param paramStr parameter string for command.
-     */
-    public void sendMessage(int msgCode, String paramStr)
-    {
-      if(looperHandlerObj != null)
-        looperHandlerObj.obtainMessage(msgCode,paramStr).sendToTarget();
-    }
-
-    /**
-     * Sends command message to the handler.
-     * @param msgCode message code (one of the "VIDCMD_..." values).
-     * @param val integer value for command.
-     */
-    public void sendMessage(int msgCode, int val)
-    {
-      if(looperHandlerObj != null)
-        looperHandlerObj.obtainMessage(msgCode,val,0).sendToTarget();
     }
   }
 }

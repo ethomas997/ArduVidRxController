@@ -2,7 +2,7 @@
 <resources>
 
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.71</string>
+    <string name="app_version">0.8</string>
     <string name="about_text">http://www.etheli.com/ArduVidRx</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
@@ -78,7 +78,6 @@
 
     <string name="errfetch_version_info">Unable to fetch version info from receiver</string>
     <string name="errfetch_chanrssi_vals">Unable to fetch chan/RSSI from receiver</string>
-    <string name="errfetch_response">No response from receiver</string>
     <string name="testmode_message">"Not connected (test mode)"</string>
 	<string name="msg_unable_scanrec">Unable to receive scan data</string>
 	<string name="msg_unable_scanparse">Unable to parse scan data</string>

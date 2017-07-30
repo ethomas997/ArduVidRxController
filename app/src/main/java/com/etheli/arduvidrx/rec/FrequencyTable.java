@@ -1,12 +1,11 @@
 //FrequencyTable.java:  Video-frequencies table and utilities.
 //
-//   5/7/2017 -- [ET]
+//  5/16/2017 -- [ET]
 //
 
 package com.etheli.arduvidrx.rec;
 
-import android.util.Log;
-
+import com.etheli.util.ULog;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,6 +57,16 @@ public class FrequencyTable
   public FreqChannelItem[] getFreqChannelItemsArray()
   {
     return freqChannelItemsArray;
+  }
+
+  /**
+   * Returns the length of the frequency-channel-items array (containing items
+   * for all frequencies in the table).
+   * @return The length of the array of FreqChannelItem objects.
+   */
+  public int getFreqChanItemsArrLength()
+  {
+    return freqChannelItemsArray.length;
   }
 
   /**
@@ -130,7 +139,7 @@ public class FrequencyTable
               itemsList.add(itemObj);
             else
             {  //error parsing
-              Log.e(LOG_TAG, "Unable to parse entry in getFChanItemsArrForScanStr():  " +
+              ULog.e(LOG_TAG, "Unable to parse entry in getFChanItemsArrForScanStr():  " +
                                                                    scanStr.substring(sPos,ePos));
             }
           }
@@ -140,7 +149,7 @@ public class FrequencyTable
     }
     catch(Exception ex)
     {  //some kind of exception error; log it and move on
-      Log.e(LOG_TAG, "Exception in getFChanItemsArrForScanStr()", ex);
+      ULog.e(LOG_TAG, "Exception in getFChanItemsArrForScanStr()", ex);
     }
          //convert list to array and return it:
     final FreqChannelItem[] retArr = new FreqChannelItem[itemsList.size()];

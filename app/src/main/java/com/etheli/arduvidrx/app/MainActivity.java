@@ -76,7 +76,7 @@ public class MainActivity extends Activity
       bluetoothSerialServiceObj = new BluetoothSerialService(
                                                   this,bluetoothHandlerObj,bluetoothWriteRecObj);
       programResourcesObj.setBluetoothSerialServiceObj(bluetoothSerialServiceObj);
-      vidReceiverManagerObj = new VidReceiverManager(this,bluetoothSerialServiceObj);
+      vidReceiverManagerObj = new VidReceiverManager(bluetoothSerialServiceObj);
       programResourcesObj.setVidReceiverManagerObj(vidReceiverManagerObj);
       programResourcesObj.setFrequencyTableObj(videoFrequencyTableObj);
       setupTerminalStartupAction();    //setup startup action for terminal
