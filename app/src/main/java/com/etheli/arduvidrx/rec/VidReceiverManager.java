@@ -177,6 +177,19 @@ public class VidReceiverManager
 
       if(!isReceiverSerialConnected())
       {  //not connected (test mode)
+              //create dummy message-processor object for test mode:
+        if(vidCmdMesssageProcessorObj == null)
+        {
+          vidCmdMesssageProcessorObj = new DataMessageProcessor(
+              new DataMsgHandlerInterface()
+                {
+                  @Override
+                  public boolean handleDataMessage(int msgCode, int val1, int val2, String paramStr)
+                  {
+                    return false;
+                  }
+                });
+        }
         if(vidRecMgrRespProcessorObj != null)    //respond with test-mode indicator
           vidRecMgrRespProcessorObj.sendMessage(VRECMGR_RESP_TESTMODE);
         ULog.d(LOG_TAG, "Not connected (test mode)");
