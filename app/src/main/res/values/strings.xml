@@ -2,7 +2,7 @@
 <resources>
 
     <string name="app_name">ArduVidRx Controller</string>
-    <string name="app_version">0.81</string>
+    <string name="app_version">0.82</string>
     <string name="about_text">http://www.etheli.com/ArduVidRx</string>
 
     <string name="terminal_name">ArduVidRx Terminal</string>
