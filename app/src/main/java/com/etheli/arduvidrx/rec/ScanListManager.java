@@ -35,6 +35,18 @@ public class ScanListManager
       if(!baseFreqChannelSelItemsList.contains(newSelItemObj))
         baseFreqChannelSelItemsList.add(newSelItemObj);
     }
+
+         //add a few extra frequencies of interest to the list:
+    newSelItemObj = new FreqChannelSelectItem(null,(short)5300,baseFreqChannelSelItemsList.size());
+    newSelItemObj.selectedFlag = false;                    //new item not selected
+    baseFreqChannelSelItemsList.add(newSelItemObj);        //enter at end of list
+    newSelItemObj = new FreqChannelSelectItem(null,(short)5366,baseFreqChannelSelItemsList.size());
+    newSelItemObj.selectedFlag = false;                    //new item not selected
+    baseFreqChannelSelItemsList.add(newSelItemObj);        //enter at end of list
+    newSelItemObj = new FreqChannelSelectItem(null,(short)5985,baseFreqChannelSelItemsList.size());
+    newSelItemObj.selectedFlag = false;                    //new item not selected
+    baseFreqChannelSelItemsList.add(newSelItemObj);        //enter at end of list
+
          //enter "preset" items into presets list:
     enterPresetFreqChanSelItems(presetsFreqChannelSelItemsList);
   }
@@ -253,12 +265,13 @@ public class ScanListManager
                                          new short[] {5733,5752,5771,5790,5809,5828,5847,5866}));
     itemsList.add(new FreqChannelSelectItem("L",
                                          new short[] {5362,5399,5436,5473,5510,5547,5584,5621}));
+    itemsList.add(new FreqChannelSelectItem("IMD6C", new short[] {5658,5695,5760,5800,5880,5917}));
+    itemsList.add(new FreqChannelSelectItem("IMD6C+L1", new short[] {5362,5658,5695,5760,5800,5880,5917}));
+    itemsList.add(new FreqChannelSelectItem("IMD6C+3", new short[] {5300,5362,5658,5695,5760,5800,5880,5917,5985}));
     itemsList.add(new FreqChannelSelectItem("IMD5", new short[] {5685,5760,5800,5860,5905}));
     itemsList.add(new FreqChannelSelectItem("IMD6", new short[] {5645,5685,5760,5800,5860,5905}));
     itemsList.add(new FreqChannelSelectItem("ET5",  new short[] {5665,5725,5820,5860,5945}));
     itemsList.add(new FreqChannelSelectItem("ET5A", new short[] {5665,5752,5800,5866,5905}));
-    itemsList.add(new FreqChannelSelectItem("ET5B", new short[] {5665,5752,5800,5865,5905}));
-    itemsList.add(new FreqChannelSelectItem("ET5C", new short[] {5665,5760,5800,5865,5905}));
     itemsList.add(new FreqChannelSelectItem("ETBest6",
                                                    new short[] {5645,5685,5760,5805,5905,5945}));
     itemsList.add(new FreqChannelSelectItem("ET6minus1", new short[] {5645,5685,5760,5905,5945}));
